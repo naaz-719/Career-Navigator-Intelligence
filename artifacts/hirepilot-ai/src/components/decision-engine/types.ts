@@ -3,20 +3,16 @@
 // The placeholder service in src/services/decisionEngine.ts implements them.
 // Swap out that service file when real APIs are ready — nothing else changes.
 
-export interface UserProfile {
+import type { AppProfile } from '@/context/ProfileContext';
+
+// ─── UserProfile ─────────────────────────────────────────────────────────────
+// The decision engine is the only place that adds a `question` field on top of
+// the canonical AppProfile. This keeps AppProfile clean and profile-centric
+// while allowing the engine form to capture the user's specific query.
+export type UserProfile = AppProfile & {
+  /** The specific question the user is asking the AI Decision Engine */
   question: string;
-  nationality: string;
-  visaStatus: string;
-  currentRole: string;
-  yearsExperience: number;
-  skills: string[];
-  education: string;
-  currentSalary: number; // AED/month
-  targetSalary: number;  // AED/month
-  targetCountries: string[];
-  careerGoal: string;
-  sector: string;
-}
+};
 
 export type ModuleStatus = 'idle' | 'running' | 'complete' | 'error';
 
@@ -44,22 +40,22 @@ export type RiskLevel = 'High' | 'Medium' | 'Low';
 export interface CountryAnalysis {
   country: string;
   flag: string;
-  hireProbability: number;      // 0–100
+  hireProbability: number;
   visaFeasibility: RiskLevel;
-  salaryMatch: number;          // % of target salary achievable
+  salaryMatch: number;
   nationalizationRisk: RiskLevel;
-  demandIndex: number;          // 0–100, YoY demand growth score
+  demandIndex: number;
   topEmployers: string[];
   recommended: boolean;
   note: string;
-  jobCount: number;             // estimated open roles matching profile
+  jobCount: number;
 }
 
 export interface SalaryAnchor {
-  askPrice: number;         // AED/mo — open negotiation here (≥ target)
-  targetPrice: number;      // AED/mo — your real target
-  expectedOffer: number;    // AED/mo — company's likely first offer
-  walkaway: number;         // AED/mo — minimum you'll accept
+  askPrice: number;
+  targetPrice: number;
+  expectedOffer: number;
+  walkaway: number;
   negotiationScript: string;
 }
 
@@ -69,8 +65,8 @@ export interface NextStep {
   detail: string;
   urgency: RiskLevel;
   timeframe: string;
-  link?: string;       // internal route (e.g. "/jobs", "/resume-studio")
-  linkLabel?: string;  // CTA label (e.g. "Open Jobs")
+  link?: string;
+  linkLabel?: string;
 }
 
 export interface ModuleInsight {
@@ -83,12 +79,12 @@ export interface DecisionResult {
   question: string;
   profile: UserProfile;
   primaryRecommendation: string;
-  hireProbability: number;      // 0–100
-  confidenceScore: number;      // 0–100
+  hireProbability: number;
+  confidenceScore: number;
   topCountry: string;
   salaryFeasibility: string;
   salaryAnchor: SalaryAnchor;
-  timeToHireEstimate: string;   // e.g. "6–10 weeks"
+  timeToHireEstimate: string;
   matchedJobCount: number;
   moduleInsights: ModuleInsight[];
   countryAnalysis: CountryAnalysis[];
@@ -98,14 +94,12 @@ export interface DecisionResult {
   generatedAt: string;
 }
 
-// Shape returned by the streaming reasoning simulation
 export interface ReasoningState {
   modules: ReasoningModule[];
   currentModuleIndex: number;
   isComplete: boolean;
 }
 
-// Compact record stored in localStorage history
 export interface AnalysisHistoryEntry {
   id: string;
   question: string;

@@ -30,7 +30,7 @@ export default function CareerTwinPage() {
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
-    const userMsg = { role: 'user', content: input };
+    const userMsg = { role: 'user' as const, content: input };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     // Simulated response — replace with POST /api/career-twin/message

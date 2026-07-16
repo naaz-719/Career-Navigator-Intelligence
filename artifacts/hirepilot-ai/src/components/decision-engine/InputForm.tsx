@@ -63,17 +63,22 @@ export default function InputForm({ onSubmit, isLoading, initialProfile }: Props
   const [errors, setErrors]           = useState<Record<string, string>>({});
 
   const [profile, setProfile] = useState<Omit<UserProfile, 'question'>>({
-    nationality:     initialProfile?.nationality     ?? 'Egyptian',
-    visaStatus:      initialProfile?.visaStatus      ?? 'Employment Visa',
-    currentRole:     initialProfile?.currentRole     ?? '',
-    yearsExperience: initialProfile?.yearsExperience ?? 6,
-    skills:          initialProfile?.skills          ? [...initialProfile.skills] : ['Python', 'AWS', 'SQL'],
-    education:       initialProfile?.education       ?? "Bachelor's Degree",
-    currentSalary:   initialProfile?.currentSalary   ?? 22000,
-    targetSalary:    initialProfile?.targetSalary    ?? 35000,
-    targetCountries: initialProfile?.targetCountries ? [...initialProfile.targetCountries] : ['United Arab Emirates', 'Saudi Arabia'],
-    careerGoal:      initialProfile?.careerGoal      ?? 'Get a new job in GCC',
-    sector:          initialProfile?.sector          ?? 'Technology',
+    name:               initialProfile?.name               ?? '',
+    nationality:        initialProfile?.nationality        ?? 'Egyptian',
+    visaStatus:         initialProfile?.visaStatus         ?? 'Employment Visa',
+    currentRole:        initialProfile?.currentRole        ?? '',
+    yearsExperience:    initialProfile?.yearsExperience    ?? 6,
+    skills:             initialProfile?.skills             ? [...initialProfile.skills] : ['Python', 'AWS', 'SQL'],
+    education:          initialProfile?.education          ?? "Bachelor's Degree",
+    currentSalary:      initialProfile?.currentSalary      ?? 22000,
+    targetSalary:       initialProfile?.targetSalary       ?? 35000,
+    targetCountries:    initialProfile?.targetCountries    ? [...initialProfile.targetCountries] : ['United Arab Emirates', 'Saudi Arabia'],
+    careerGoal:         initialProfile?.careerGoal         ?? 'Get a new job in GCC',
+    sector:             initialProfile?.sector             ?? 'Technology',
+    currentCountry:     initialProfile?.currentCountry     ?? 'United Arab Emirates',
+    languages:          initialProfile?.languages          ? [...initialProfile.languages] : [],
+    linkedinUrl:        initialProfile?.linkedinUrl        ?? '',
+    preferredWorkStyle: initialProfile?.preferredWorkStyle ?? '',
   });
 
   const set = (key: keyof typeof profile, val: unknown) =>

@@ -1,14 +1,15 @@
 // ─── Shared Profile Context ──────────────────────────────────────────────────
-// Single source of truth for the current user's profile across all pages.
-// Every page reads from useProfile(). The AI Decision Engine writes to it.
-// When a real auth layer exists, replace DEFAULT_PROFILE with the API response.
+// Single source of truth for the current user's profile across ALL pages.
+// Every page reads from useProfile(). The AI Decision Engine also writes to it.
+// Backend seam: replace DEFAULT_PROFILE with GET /api/me when auth is live.
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import type { DecisionResult } from '@/components/decision-engine/types';
 
 // ─── Canonical app-wide profile ──────────────────────────────────────────────
-// This is a superset of the decision engine's UserProfile form shape.
-// Backend seam: replace DEFAULT_PROFILE fetch with GET /api/me
+// This is the single UserProfile model used by every intelligence module.
+// The decision engine extends this with a transient `question` field — see
+// components/decision-engine/types.ts for that shape.
 export interface AppProfile {
   name: string;
   nationality: string;
@@ -17,12 +18,16 @@ export interface AppProfile {
   skills: string[];
   education: string;
   sector: string;
-  currentSalary: number;   // AED / month
-  targetSalary: number;    // AED / month
+  currentSalary: number;      // AED / month
+  targetSalary: number;       // AED / month
   currentCountry: string;
   targetCountries: string[];
   visaStatus: string;
   careerGoal: string;
+  // Extended profile fields
+  languages: string[];
+  linkedinUrl: string;
+  preferredWorkStyle: 'onsite' | 'hybrid' | 'remote' | '';
 }
 
 export const DEFAULT_PROFILE: AppProfile = {
@@ -39,32 +44,48 @@ export const DEFAULT_PROFILE: AppProfile = {
   targetCountries: ['United Arab Emirates', 'Saudi Arabia', 'Qatar'],
   visaStatus: 'Employment Visa',
   careerGoal: 'Get a new job in GCC',
+  languages: ['English', 'Arabic'],
+  linkedinUrl: '',
+  preferredWorkStyle: 'hybrid',
 };
 
 // ─── Context shape ────────────────────────────────────────────────────────────
 interface ProfileContextValue {
   profile: AppProfile;
   setProfile: React.Dispatch<React.SetStateAction<AppProfile>>;
-  /** Merge fields from a completed AI Decision Engine analysis into the profile */
+  /** Merge partial fields — use this for any page that writes back to the profile */
+  updateProfile: (partial: Partial<AppProfile>) => void;
+  /** Merge fields from a completed AI Decision Engine analysis */
   mergeFromAnalysis: (partial: Partial<AppProfile>) => void;
-  /** The most recent completed AI Decision Engine result, or null */
+  /** Most recent completed AI Decision Engine result, or null */
   lastAnalysis: DecisionResult | null;
   setLastAnalysis: (r: DecisionResult | null) => void;
+  /** Monotonic timestamp — increments on every profile change */
+  lastUpdated: number;
 }
 
 const ProfileContext = createContext<ProfileContextValue | null>(null);
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
-  const [profile, setProfile] = useState<AppProfile>(DEFAULT_PROFILE);
+  const [profile, setProfile]           = useState<AppProfile>(DEFAULT_PROFILE);
   const [lastAnalysis, setLastAnalysis] = useState<DecisionResult | null>(null);
+  const [lastUpdated, setLastUpdated]   = useState<number>(Date.now());
+
+  const updateProfile = useCallback((partial: Partial<AppProfile>) => {
+    setProfile((prev) => ({ ...prev, ...partial }));
+    setLastUpdated(Date.now());
+  }, []);
 
   const mergeFromAnalysis = useCallback((partial: Partial<AppProfile>) => {
     setProfile((prev) => ({ ...prev, ...partial }));
+    setLastUpdated(Date.now());
   }, []);
 
   return (
-    <ProfileContext.Provider value={{ profile, setProfile, mergeFromAnalysis, lastAnalysis, setLastAnalysis }}>
+    <ProfileContext.Provider
+      value={{ profile, setProfile, updateProfile, mergeFromAnalysis, lastAnalysis, setLastAnalysis, lastUpdated }}
+    >
       {children}
     </ProfileContext.Provider>
   );

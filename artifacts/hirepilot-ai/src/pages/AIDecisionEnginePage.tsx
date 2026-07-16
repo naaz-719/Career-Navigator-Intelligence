@@ -26,19 +26,7 @@ function buildInitialModules(): ReasoningModule[] {
 }
 
 function appProfileToFormValues(p: AppProfile): Omit<UserProfile, 'question'> {
-  return {
-    nationality:     p.nationality,
-    visaStatus:      p.visaStatus,
-    currentRole:     p.currentRole,
-    yearsExperience: p.yearsExperience,
-    skills:          [...p.skills],
-    education:       p.education,
-    currentSalary:   p.currentSalary,
-    targetSalary:    p.targetSalary,
-    targetCountries: [...p.targetCountries],
-    careerGoal:      p.careerGoal,
-    sector:          p.sector,
-  };
+  return { ...p, skills: [...p.skills], targetCountries: [...p.targetCountries], languages: [...p.languages] };
 }
 
 function engineProfileToAppProfile(u: UserProfile): Partial<AppProfile> {
