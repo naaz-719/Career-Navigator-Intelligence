@@ -1,0 +1,2 @@
+- [HirePilot AI Architecture](hirepilot-ai-arch.md) — ProfileContext is the single source of truth; all pages derive data from it via mockDataService; AI Decision Engine is the write path that updates the shared profile
+- [Decision Engine contracts](decision-engine-contracts.md) — types.ts is the API contract; decisionEngine.ts is the only backend seam; never touch other files to swap in a real API

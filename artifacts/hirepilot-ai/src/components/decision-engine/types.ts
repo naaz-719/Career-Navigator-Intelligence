@@ -52,6 +52,15 @@ export interface CountryAnalysis {
   topEmployers: string[];
   recommended: boolean;
   note: string;
+  jobCount: number;             // estimated open roles matching profile
+}
+
+export interface SalaryAnchor {
+  askPrice: number;         // AED/mo — open negotiation here (≥ target)
+  targetPrice: number;      // AED/mo — your real target
+  expectedOffer: number;    // AED/mo — company's likely first offer
+  walkaway: number;         // AED/mo — minimum you'll accept
+  negotiationScript: string;
 }
 
 export interface NextStep {
@@ -60,6 +69,8 @@ export interface NextStep {
   detail: string;
   urgency: RiskLevel;
   timeframe: string;
+  link?: string;       // internal route (e.g. "/jobs", "/resume-studio")
+  linkLabel?: string;  // CTA label (e.g. "Open Jobs")
 }
 
 export interface ModuleInsight {
@@ -72,10 +83,13 @@ export interface DecisionResult {
   question: string;
   profile: UserProfile;
   primaryRecommendation: string;
-  hireProbability: number;     // 0–100
-  confidenceScore: number;     // 0–100
+  hireProbability: number;      // 0–100
+  confidenceScore: number;      // 0–100
   topCountry: string;
   salaryFeasibility: string;
+  salaryAnchor: SalaryAnchor;
+  timeToHireEstimate: string;   // e.g. "6–10 weeks"
+  matchedJobCount: number;
   moduleInsights: ModuleInsight[];
   countryAnalysis: CountryAnalysis[];
   strengths: string[];
@@ -89,4 +103,15 @@ export interface ReasoningState {
   modules: ReasoningModule[];
   currentModuleIndex: number;
   isComplete: boolean;
+}
+
+// Compact record stored in localStorage history
+export interface AnalysisHistoryEntry {
+  id: string;
+  question: string;
+  hireProbability: number;
+  topCountry: string;
+  sector: string;
+  generatedAt: string;
+  result: DecisionResult;
 }
