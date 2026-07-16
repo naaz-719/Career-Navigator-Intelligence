@@ -17,6 +17,7 @@ import RelocationPage from '@/pages/RelocationPage';
 import SalaryIntelligencePage from '@/pages/SalaryIntelligencePage';
 import NationalizationPage from '@/pages/NationalizationPage';
 import SettingsPage from '@/pages/SettingsPage';
+import AIDecisionEnginePage from '@/pages/AIDecisionEnginePage';
 
 // Layout
 import AppLayout from '@/components/layout/AppLayout';
@@ -59,6 +60,9 @@ function Router() {
       </Route>
       <Route path="/nationalization">
         <AppLayout><NationalizationPage /></AppLayout>
+      </Route>
+      <Route path="/ai-decision-engine">
+        <AppLayout><AIDecisionEnginePage /></AppLayout>
       </Route>
       <Route path="/settings">
         <AppLayout><SettingsPage /></AppLayout>

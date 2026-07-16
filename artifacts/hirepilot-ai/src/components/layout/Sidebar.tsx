@@ -11,6 +11,7 @@ import {
   Globe, 
   Banknote, 
   ShieldAlert, 
+  Brain,
   Settings 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { icon: Globe, label: 'Relocation', href: '/relocation' },
   { icon: Banknote, label: 'Salary Intelligence', href: '/salary-intelligence' },
   { icon: ShieldAlert, label: 'Nationalization', href: '/nationalization' },
+  { icon: Brain, label: 'AI Decision Engine', href: '/ai-decision-engine' },
 ];
 
 export default function Sidebar() {
