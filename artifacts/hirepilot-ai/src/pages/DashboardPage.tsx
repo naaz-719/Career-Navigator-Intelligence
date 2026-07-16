@@ -8,6 +8,12 @@ import {
   getDashboardMetrics, getDashboardTimeline,
   getSkillGaps, getDashboardJobs, getRecentSimulations,
 } from '@/services/mockDataService';
+import WhyPanel from '@/components/why/WhyPanel';
+import {
+  getWhyCareerScore, getWhyHireProbabilityDashboard,
+  getWhyInterviewReadiness, getWhySalaryPotential,
+  getWhyJobMatch, getWhyGhostRisk,
+} from '@/services/whyDataService';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
@@ -18,14 +24,12 @@ export default function DashboardPage() {
 
   const { profile, lastAnalysis } = useProfile();
 
-  // All data derived from shared profile — backend seam: replace with useSWR('/api/dashboard', ...)
   const metrics     = getDashboardMetrics(profile);
   const timeline    = getDashboardTimeline(profile);
   const skillGaps   = getSkillGaps(profile);
   const jobs        = getDashboardJobs(profile);
   const simulations = getRecentSimulations(profile);
 
-  // If AI Decision Engine has been run, use its hire probability
   const hirePct = lastAnalysis ? lastAnalysis.hireProbability : metrics.hireProbability;
 
   return (
@@ -41,8 +45,6 @@ export default function DashboardPage() {
             {profile.currentRole} · {profile.sector} · {profile.yearsExperience} yrs experience
           </p>
         </div>
-
-        {/* Profile source badge */}
         {lastAnalysis && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -57,6 +59,8 @@ export default function DashboardPage() {
 
       {/* Top Row: 4 metric cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+        {/* Career Score */}
         <motion.div variants={item} className="bg-card border border-border/50 rounded-xl p-5 flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
             <div className="text-sm font-medium text-muted-foreground">Career Score</div>
@@ -67,12 +71,14 @@ export default function DashboardPage() {
               {metrics.careerScore}<span className="text-lg text-muted-foreground">/100</span>
             </span>
           </div>
-          <div className="mt-2 text-xs text-green-400 font-medium flex items-center gap-1">
+          <div className="mt-2 text-xs text-green-400 font-medium flex items-center gap-1 mb-2">
             <TrendingUp className="w-3 h-3" />
             {metrics.careerScore >= 80 ? 'Strong profile' : metrics.careerScore >= 65 ? 'Good standing' : 'Needs improvement'}
           </div>
+          <WhyPanel data={getWhyCareerScore(profile, metrics.careerScore)} />
         </motion.div>
 
+        {/* Best Market */}
         <motion.div variants={item} className="bg-card border border-border/50 rounded-xl p-5 flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
             <div className="text-sm font-medium text-muted-foreground">Best Market</div>
@@ -82,11 +88,13 @@ export default function DashboardPage() {
             <span className="text-3xl">{metrics.topFlag}</span>
             <span className="text-2xl font-bold text-foreground">{metrics.topCountryShort}</span>
           </div>
-          <div className="mt-2 text-xs text-muted-foreground">
+          <div className="mt-2 text-xs text-muted-foreground mb-2">
             {hirePct}% hire probability · top market for your profile
           </div>
+          <WhyPanel data={getWhyHireProbabilityDashboard(profile, hirePct)} />
         </motion.div>
 
+        {/* Salary Potential */}
         <motion.div variants={item} className="bg-card border border-border/50 rounded-xl p-5 flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
             <div className="text-sm font-medium text-muted-foreground">Salary Potential</div>
@@ -98,12 +106,14 @@ export default function DashboardPage() {
             </span>
             <span className="text-sm text-muted-foreground">/mo</span>
           </div>
-          <div className="mt-2 text-xs text-green-400 font-medium flex items-center gap-1">
+          <div className="mt-2 text-xs text-green-400 font-medium flex items-center gap-1 mb-2">
             <TrendingUp className="w-3 h-3" />
             +{Math.round(((metrics.salaryPotential - profile.currentSalary) / profile.currentSalary) * 100)}% above current
           </div>
+          <WhyPanel data={getWhySalaryPotential(profile)} />
         </motion.div>
 
+        {/* Interview Readiness */}
         <motion.div variants={item} className="bg-card border border-border/50 rounded-xl p-5 flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
             <div className="text-sm font-medium text-muted-foreground">Interview Readiness</div>
@@ -115,9 +125,10 @@ export default function DashboardPage() {
           <div className="w-full bg-muted rounded-full h-1.5 mb-2">
             <div className="bg-primary h-1.5 rounded-full" style={{ width: `${metrics.interviewReadiness}%` }} />
           </div>
-          <div className={`text-xs ${skillGaps.length > 3 ? 'text-amber-400' : 'text-green-400'}`}>
+          <div className={`text-xs mb-2 ${skillGaps.length > 3 ? 'text-amber-400' : 'text-green-400'}`}>
             {skillGaps.length} skill gap{skillGaps.length !== 1 ? 's' : ''} to close
           </div>
+          <WhyPanel data={getWhyInterviewReadiness(profile, metrics.interviewReadiness)} />
         </motion.div>
       </div>
 
@@ -174,6 +185,8 @@ export default function DashboardPage() {
 
       {/* Third Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+        {/* Latest Opportunities */}
         <motion.div variants={item} className="bg-card border border-border/50 rounded-xl p-5">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-base font-semibold">Latest Opportunities</h3>
@@ -181,34 +194,54 @@ export default function DashboardPage() {
           </div>
           <div className="space-y-3">
             {jobs.map((job, i) => (
-              <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-border/30 hover:bg-muted/20 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground">
-                    {job.company.substring(0, 1)}
+              <div key={i} className="flex flex-col p-3 rounded-lg border border-border/30 hover:bg-muted/20 transition-colors gap-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground">
+                      {job.company.substring(0, 1)}
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm flex items-center gap-2">
+                        {job.title}
+                        {job.isGhost && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-500 font-semibold border border-amber-500/20">
+                            ⚠️ Ghost {job.ghostRisk}%
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        {job.company} · {job.flag} {job.loc}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-medium text-sm flex items-center gap-2">
-                      {job.title}
-                      {job.isGhost && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-500 font-semibold border border-amber-500/20">
-                          ⚠️ Ghost Risk {job.ghostRisk}%
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-                      {job.company} · {job.flag} {job.loc}
-                    </div>
+                  <div className="text-right flex flex-col items-end gap-1">
+                    <span className="text-sm font-medium text-primary">{job.salaryLabel}</span>
+                    <span className={`text-xs font-bold ${job.match >= 85 ? 'text-emerald-400' : job.match >= 70 ? 'text-amber-400' : 'text-red-400'}`}>
+                      {job.match}% match
+                    </span>
                   </div>
                 </div>
-                <div className="text-right flex flex-col items-end">
-                  <span className="text-sm font-medium text-primary">{job.salaryLabel}</span>
-                  <span className="text-xs text-muted-foreground">{job.match}% match</span>
+                {/* Why panels for match and ghost risk */}
+                <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-border/20">
+                  <WhyPanel
+                    data={getWhyJobMatch(job, profile, job.match)}
+                    trigger="badge"
+                    className="w-auto"
+                  />
+                  {job.isGhost && (
+                    <WhyPanel
+                      data={getWhyGhostRisk(job)}
+                      trigger="badge"
+                      className="w-auto"
+                    />
+                  )}
                 </div>
               </div>
             ))}
           </div>
         </motion.div>
 
+        {/* Recent Career Simulations */}
         <motion.div variants={item} className="bg-card border border-border/50 rounded-xl p-5">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-base font-semibold">Recent Career Simulations</h3>
@@ -221,15 +254,19 @@ export default function DashboardPage() {
                   <span className="font-medium text-sm group-hover:text-primary transition-colors">{sim.name}</span>
                   <span className="text-xs text-muted-foreground">{sim.date}</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 mb-2">
                   <span className={`text-lg font-bold ${sim.prob > 70 ? 'text-green-500' : sim.prob > 55 ? 'text-amber-500' : 'text-red-500'}`}>
                     {sim.prob}%
                   </span>
                   <span className="text-xs text-muted-foreground">Probability of Success</span>
                 </div>
+                <WhyPanel
+                  data={getWhyHireProbabilityDashboard(profile, sim.prob)}
+                  trigger="badge"
+                  className="w-auto"
+                />
               </div>
             ))}
-            {/* CTA to run real analysis */}
             <Link href="/ai-decision-engine">
               <div className="p-3 rounded-lg border border-dashed border-primary/30 hover:border-primary/60 hover:bg-primary/5 transition-colors cursor-pointer text-center">
                 <span className="text-xs text-primary font-medium flex items-center justify-center gap-2">

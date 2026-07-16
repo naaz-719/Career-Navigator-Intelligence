@@ -11,6 +11,13 @@ import {
 } from 'lucide-react';
 import { Link } from 'wouter';
 import type { DecisionResult, ModuleId, RiskLevel } from './types';
+import WhyPanel from '@/components/why/WhyPanel';
+import {
+  getWhyHireProbabilityEngine,
+  getWhyConfidenceScore,
+  getWhyCountryRanking,
+  getWhySalaryPotential,
+} from '@/services/whyDataService';
 
 // ─── Copy button ──────────────────────────────────────────────────────────────
 function CopyButton({ text }: { text: string }) {
@@ -144,6 +151,7 @@ function CountryRow({ c, rank }: { c: DecisionResult['countryAnalysis'][0]; rank
           </Link>
         </div>
       </div>
+      {/* Why panel for this country's ranking — rendered inside the card below the content */}
     </motion.div>
   );
 }
@@ -452,8 +460,9 @@ export default function ResultPanel({ result, onReset }: Props) {
 
       {/* ── Score cards row ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="col-span-2 row-span-1 p-6 rounded-xl border border-border/40 bg-card/50 flex flex-col items-center justify-center">
+        <div className="col-span-2 row-span-1 p-6 rounded-xl border border-border/40 bg-card/50 flex flex-col items-center justify-center gap-3">
           <HireProbabilityGauge value={result.hireProbability} />
+          <WhyPanel data={getWhyHireProbabilityEngine(result)} trigger="badge" />
         </div>
 
         <div className="p-5 rounded-xl border border-border/40 bg-card/50 flex flex-col gap-1">
@@ -466,7 +475,8 @@ export default function ResultPanel({ result, onReset }: Props) {
             <motion.div className="h-full bg-gradient-to-r from-violet-500 to-primary rounded-full"
               initial={{ width: 0 }} animate={{ width: `${result.confidenceScore}%` }} transition={{ duration: 1.2, delay: 0.5 }} />
           </div>
-          <p className="text-xs text-muted-foreground/70 mt-1">Profile completeness + historical match accuracy</p>
+          <p className="text-xs text-muted-foreground/70 mt-1 mb-2">Profile completeness + historical match accuracy</p>
+          <WhyPanel data={getWhyConfidenceScore(result)} trigger="badge" />
         </div>
 
         <div className="p-5 rounded-xl border border-border/40 bg-card/50 flex flex-col gap-1">
@@ -487,12 +497,13 @@ export default function ResultPanel({ result, onReset }: Props) {
               {salaryDelta > 0 ? '+' : ''}{salaryDelta}%
             </span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1 mb-2">
             AED {(result.profile.currentSalary / 1000).toFixed(0)}K → {(result.profile.targetSalary / 1000).toFixed(0)}K/mo ·{' '}
             <span className={result.salaryFeasibility === 'High' ? 'text-emerald-400' : result.salaryFeasibility === 'Medium' ? 'text-amber-400' : 'text-red-400'}>
               {result.salaryFeasibility}
             </span>
           </p>
+          <WhyPanel data={getWhySalaryPotential(result.profile)} trigger="badge" />
         </div>
 
         <div className="p-5 rounded-xl border border-border/40 bg-card/50 flex flex-col gap-1">

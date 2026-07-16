@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { ShieldAlert, ArrowRight, ShieldCheck, Building2 } from 'lucide-react';
 import { useProfile } from '@/context/ProfileContext';
 import { getNationalizationData } from '@/services/mockDataService';
+import WhyPanel from '@/components/why/WhyPanel';
+import { getWhyNatRiskScore, getWhyCountryNatRisk } from '@/services/whyDataService';
 
 export default function NationalizationPage() {
   const { profile } = useProfile();
@@ -36,15 +38,15 @@ export default function NationalizationPage() {
         <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"
           style={{ background: `${natl.scoreColor}15` }} />
 
-        <div>
+        <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
             <ShieldAlert className="w-5 h-5" style={{ color: natl.scoreColor }} />
             <h3 className="font-semibold text-lg text-foreground">Your Expat Risk Score</h3>
           </div>
-          <p className="text-muted-foreground text-sm max-w-md leading-relaxed">
+          <p className="text-muted-foreground text-sm max-w-md leading-relaxed mb-4">
             {natl.riskDescription}
           </p>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 mb-4">
             {profile.targetCountries.map(c => {
               const detail = natl.countryDetails.find(d => d.country === c);
               if (!detail) return null;
@@ -55,10 +57,12 @@ export default function NationalizationPage() {
               );
             })}
           </div>
+          {/* Why panel for the overall risk score */}
+          <WhyPanel data={getWhyNatRiskScore(profile, natl.score)} />
         </div>
 
         {/* SVG Gauge */}
-        <div className="shrink-0 flex items-center justify-center">
+        <div className="shrink-0 flex flex-col items-center gap-3">
           <svg width="180" height="180" viewBox="0 0 160 160">
             {/* Track */}
             <circle cx="80" cy="80" r={radius}
@@ -80,6 +84,10 @@ export default function NationalizationPage() {
             <text x="80" y="85" textAnchor="middle" fontSize="36" fontWeight="bold" fill="hsl(var(--foreground))">{gaugeValue.toFixed(1)}</text>
             <text x="80" y="105" textAnchor="middle" fontSize="12" fill="hsl(var(--muted-foreground))">/ 10</text>
           </svg>
+          <div className="text-center">
+            <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: natl.scoreColor }}>{natl.riskLabel} Risk</div>
+            <div className="text-xs text-muted-foreground mt-0.5">avg. across target markets</div>
+          </div>
         </div>
       </div>
 
@@ -111,9 +119,16 @@ export default function NationalizationPage() {
               <div className="text-xs font-medium text-foreground mb-2">{c.policy}</div>
               <div className="text-xs text-muted-foreground mb-1">Quota: {c.quota}</div>
               <p className="text-xs text-muted-foreground leading-relaxed mb-4 min-h-[40px]">{c.desc}</p>
-              <button className="text-xs text-primary hover:underline flex items-center gap-1 font-medium">
-                View Policy Details <ArrowRight className="w-3 h-3" />
-              </button>
+              <div className="flex items-center justify-between pt-3 border-t border-border/20">
+                <button className="text-xs text-primary hover:underline flex items-center gap-1 font-medium">
+                  View Policy Details <ArrowRight className="w-3 h-3" />
+                </button>
+                <WhyPanel
+                  data={getWhyCountryNatRisk(c.country, c.risk, profile.sector, isTarget)}
+                  trigger="badge"
+                  className="w-auto"
+                />
+              </div>
             </motion.div>
           );
         })}

@@ -6,6 +6,8 @@ import {
 import { TrendingUp } from 'lucide-react';
 import { useProfile } from '@/context/ProfileContext';
 import { getSalaryData } from '@/services/mockDataService';
+import WhyPanel from '@/components/why/WhyPanel';
+import { getWhySalaryPercentile, getWhyMedianRate } from '@/services/whyDataService';
 
 const CHART_COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))'];
 
@@ -89,13 +91,19 @@ export default function SalaryIntelligencePage() {
           </div>
         </div>
 
+        {/* Median Rate + Why */}
         <div className="flex flex-col items-center justify-center py-6 border-y border-border/50 mb-6">
           <div className="text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wider">Median Market Rate</div>
-          <div className="text-5xl font-bold text-foreground mb-4">
+          <div className="text-5xl font-bold text-foreground mb-2">
             AED {(salary.medianRate / 1000).toFixed(0)}K <span className="text-xl text-muted-foreground font-normal">/ mo</span>
           </div>
+          {/* Why panel for median rate */}
+          <div className="mb-4">
+            <WhyPanel data={getWhyMedianRate(profile, salary.medianRate)} trigger="badge" />
+          </div>
 
-          <div className="w-full max-w-2xl mt-4 relative">
+          {/* Percentile bar */}
+          <div className="w-full max-w-2xl mt-2 relative">
             <div className="flex justify-between text-xs text-muted-foreground mb-2">
               <span>P25 ({Math.round(salary.percentiles.p25 / 1000)}K)</span>
               <span>P50 Median</span>
@@ -114,8 +122,12 @@ export default function SalaryIntelligencePage() {
                 You ({salary.targetK}K)
               </div>
             </div>
-            <div className="text-center text-sm mt-4 text-green-400 font-medium">
+            <div className="text-center text-sm mt-5 text-green-400 font-medium">
               Your target salary puts you in the {pctPosition}th percentile for {profile.sector} · {profile.yearsExperience} years exp.
+            </div>
+            {/* Why panel for percentile */}
+            <div className="flex justify-center mt-3">
+              <WhyPanel data={getWhySalaryPercentile(profile, pctPosition, salary.medianRate)} trigger="badge" />
             </div>
           </div>
         </div>

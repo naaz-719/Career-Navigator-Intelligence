@@ -4,8 +4,9 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Activity, TrendingUp, Clock, BookOpen } from 'lucide-react';
 import { useProfile } from '@/context/ProfileContext';
 import { getMarketDemand, getSkillRadar, getTopCompanies } from '@/services/mockDataService';
+import WhyPanel from '@/components/why/WhyPanel';
+import { getWhyDemandScore, getWhyMarketVelocity, getWhySkillGap } from '@/services/whyDataService';
 
-// Velocity data is global market data — not profile-specific
 const velocityData = [
   { month: 'Jan', Tech: 4000, Finance: 2400, Energy: 2400, Healthcare: 3200 },
   { month: 'Feb', Tech: 3000, Finance: 1398, Energy: 2210, Healthcare: 3000 },
@@ -30,7 +31,6 @@ export default function CareerIntelligencePage() {
   const radar     = getSkillRadar(profile);
   const companies = getTopCompanies(profile);
 
-  // Ranked skill gaps from radar (market demand - your score)
   const rankedGaps = radar
     .map(d => ({ name: d.subject, yourScore: d.A as number, marketScore: d.B as number, gap: (d.B as number) - (d.A as number) }))
     .filter(d => d.gap > 5)
@@ -65,22 +65,32 @@ export default function CareerIntelligencePage() {
       {activeTab === 'market' && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-card border border-border/50 rounded-xl p-5">
+
+            {/* Demand Score */}
+            <div className="bg-card border border-border/50 rounded-xl p-5 flex flex-col">
               <div className="flex justify-between items-start mb-2">
                 <div className="text-sm font-medium text-muted-foreground">Demand Score</div>
                 <Activity className="w-4 h-4 text-primary" />
               </div>
-              <div className="text-3xl font-bold text-foreground">{demand.score}<span className="text-lg text-muted-foreground">/10</span></div>
-              <div className="mt-2 text-xs text-muted-foreground">{demand.note}</div>
+              <div className="text-3xl font-bold text-foreground mb-1">
+                {demand.score}<span className="text-lg text-muted-foreground">/10</span>
+              </div>
+              <div className="text-xs text-muted-foreground mb-3">{demand.note}</div>
+              <WhyPanel data={getWhyDemandScore(profile, demand.score)} />
             </div>
-            <div className="bg-card border border-border/50 rounded-xl p-5">
+
+            {/* Market Velocity */}
+            <div className="bg-card border border-border/50 rounded-xl p-5 flex flex-col">
               <div className="flex justify-between items-start mb-2">
                 <div className="text-sm font-medium text-muted-foreground">Market Velocity</div>
                 <TrendingUp className="w-4 h-4 text-green-500" />
               </div>
-              <div className="text-3xl font-bold text-green-500">↑ {demand.velocity}%</div>
-              <div className="mt-2 text-xs text-muted-foreground">Hiring volume vs last quarter · {profile.sector}</div>
+              <div className="text-3xl font-bold text-green-500 mb-1">↑ {demand.velocity}%</div>
+              <div className="text-xs text-muted-foreground mb-3">Hiring volume vs last quarter · {profile.sector}</div>
+              <WhyPanel data={getWhyMarketVelocity(profile, demand.velocity)} />
             </div>
+
+            {/* Avg Time to Hire — no scored metric, no Why needed */}
             <div className="bg-card border border-border/50 rounded-xl p-5">
               <div className="flex justify-between items-start mb-2">
                 <div className="text-sm font-medium text-muted-foreground">Avg Time to Hire</div>
@@ -193,7 +203,7 @@ export default function CareerIntelligencePage() {
                                                    'bg-yellow-500/10 text-yellow-500'
                       }`}>{severity}</span>
                     </div>
-                    <div className="flex items-center justify-between mt-4">
+                    <div className="flex items-center justify-between mt-3">
                       <div className="flex-1 mr-4">
                         <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                           <div className="h-full bg-primary/40 rounded-full" style={{ width: `${gap.yourScore}%` }} />
@@ -202,6 +212,10 @@ export default function CareerIntelligencePage() {
                       <button className="flex items-center gap-1 text-xs text-primary hover:underline font-medium flex-shrink-0">
                         <BookOpen className="w-3 h-3" /> Learning Path
                       </button>
+                    </div>
+                    {/* Why panel for each gap */}
+                    <div className="mt-3 border-t border-border/20 pt-3">
+                      <WhyPanel data={getWhySkillGap(gap, profile)} />
                     </div>
                   </div>
                 );
@@ -256,6 +270,13 @@ export default function CareerIntelligencePage() {
                     </span>
                   </div>
                 </div>
+                {/* Why panel for country nationalization risk */}
+                <div className="mt-3 pt-3 border-t border-border/20">
+                  <WhyPanel
+                    data={getWhyCountryNatRisk(nat.country, nat.risk, profile.sector, isTarget)}
+                    trigger="badge"
+                  />
+                </div>
               </div>
             );
           })}
@@ -264,3 +285,6 @@ export default function CareerIntelligencePage() {
     </div>
   );
 }
+
+// Local import bridge (avoids circular ref)
+import { getWhyCountryNatRisk } from '@/services/whyDataService';

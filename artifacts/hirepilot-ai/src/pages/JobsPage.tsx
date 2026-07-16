@@ -4,6 +4,8 @@ import { Search, MapPin, Building, Briefcase, Bookmark, AlertTriangle, Filter, C
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { useProfile } from '@/context/ProfileContext';
 import { getJobsData } from '@/services/mockDataService';
+import WhyPanel from '@/components/why/WhyPanel';
+import { getWhyJobMatch, getWhyGhostRisk } from '@/services/whyDataService';
 
 const GCC_COUNTRIES = ['United Arab Emirates', 'Saudi Arabia', 'Qatar', 'Oman', 'Bahrain', 'Kuwait'];
 const FLAG_LABELS: Record<string, string> = {
@@ -147,6 +149,7 @@ export default function JobsPage() {
               transition={{ delay: i * 0.05 }}
               className={`bg-card border ${job.isGhost ? 'border-amber-500/30 bg-amber-500/[0.02]' : 'border-border/50 hover:border-primary/40'} rounded-xl p-5 transition-colors relative overflow-hidden group`}
             >
+              {/* Ghost job banner */}
               {job.isGhost && (
                 <div className="absolute top-0 left-0 right-0 bg-amber-500/10 border-b border-amber-500/20 px-4 py-1.5 flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-amber-500" />
@@ -156,11 +159,11 @@ export default function JobsPage() {
               )}
 
               <div className={`flex items-start justify-between ${job.isGhost ? 'mt-6' : ''}`}>
-                <div className="flex gap-4">
+                <div className="flex gap-4 flex-1">
                   <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-lg font-bold border border-border/50 shrink-0">
                     {job.company.substring(0, 1)}
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors cursor-pointer">{job.title}</h3>
                     <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
                       <span className="flex items-center gap-1"><Building className="w-3 h-3"/> {job.company}</span>
@@ -175,7 +178,7 @@ export default function JobsPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-col items-end justify-between h-full gap-4">
+                <div className="flex flex-col items-end justify-between h-full gap-4 ml-4">
                   <div className="text-right">
                     <div className={`text-xl font-bold ${job.match >= 85 ? 'text-green-500' : job.match >= 70 ? 'text-amber-500' : 'text-red-500'}`}>
                       {job.match}%
@@ -188,13 +191,31 @@ export default function JobsPage() {
                 </div>
               </div>
 
-              <div className="mt-5 pt-4 border-t border-border/50 flex items-center justify-between">
-                <div className="text-sm font-medium text-foreground">{job.salaryLabel}</div>
-                <div className="flex items-center gap-4">
-                  <span className="text-xs text-muted-foreground">{job.posted}</span>
-                  <button className="bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground px-4 py-1.5 rounded-md text-sm font-medium transition-colors">
-                    View Details
-                  </button>
+              {/* Why panels + footer row */}
+              <div className="mt-4 pt-4 border-t border-border/50">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-sm font-medium text-foreground">{job.salaryLabel}</div>
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs text-muted-foreground">{job.posted}</span>
+                    <button className="bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground px-4 py-1.5 rounded-md text-sm font-medium transition-colors">
+                      View Details
+                    </button>
+                  </div>
+                </div>
+                {/* Why panels inline */}
+                <div className="flex items-center gap-3 flex-wrap">
+                  <WhyPanel
+                    data={getWhyJobMatch(job, profile, job.match)}
+                    trigger="badge"
+                    className="w-auto"
+                  />
+                  {job.isGhost && (
+                    <WhyPanel
+                      data={getWhyGhostRisk(job)}
+                      trigger="badge"
+                      className="w-auto"
+                    />
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -222,6 +243,13 @@ export default function JobsPage() {
               <div className="text-xs text-muted-foreground mb-1">Ghost Job Rate</div>
               <div className="text-lg font-bold text-amber-500">{ghostRate}%</div>
               <div className="text-xs text-muted-foreground mt-1">in {profile.sector} sector</div>
+              <div className="mt-2">
+                <WhyPanel
+                  data={getWhyGhostRisk({ title: 'sector average', company: profile.sector, ghostRisk: ghostRate, posted: 'ongoing' })}
+                  trigger="badge"
+                  className="w-auto"
+                />
+              </div>
             </div>
           </div>
 
