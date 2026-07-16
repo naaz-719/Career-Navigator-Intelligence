@@ -6,6 +6,10 @@ import { Route, Switch, Router as WouterRouter } from 'wouter';
 
 // Pages
 import LandingPage from '@/pages/LandingPage';
+import SignInPage from '@/pages/auth/SignInPage';
+import SignUpPage from '@/pages/auth/SignUpPage';
+import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from '@/pages/auth/ResetPasswordPage';
 import DashboardPage from '@/pages/DashboardPage';
 import CareerIntelligencePage from '@/pages/CareerIntelligencePage';
 import CareerTwinPage from '@/pages/CareerTwinPage';
@@ -30,6 +34,12 @@ function Router() {
     <Switch>
       {/* Public Routes */}
       <Route path="/" component={LandingPage} />
+
+      {/* Auth Routes — standalone layout, no AppLayout wrapper */}
+      <Route path="/sign-in" component={SignInPage} />
+      <Route path="/sign-up" component={SignUpPage} />
+      <Route path="/forgot-password" component={ForgotPasswordPage} />
+      <Route path="/reset-password" component={ResetPasswordPage} />
 
       {/* Authenticated Routes wrapped in AppLayout */}
       <Route path="/dashboard">

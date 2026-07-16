@@ -22,10 +22,10 @@ export default function LandingPage() {
             <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="hidden md:block text-sm font-medium text-foreground hover:text-primary transition-colors">
+            <Link href="/sign-in" className="hidden md:block text-sm font-medium text-foreground hover:text-primary transition-colors">
               Sign In
             </Link>
-            <Link href="/dashboard" className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-semibold transition-all shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_25px_rgba(59,130,246,0.5)]">
+            <Link href="/sign-up" className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-semibold transition-all shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_25px_rgba(59,130,246,0.5)]">
               Start Free Analysis
             </Link>
           </div>
@@ -73,7 +73,7 @@ export default function LandingPage() {
           transition={{ duration: 0.6, delay: 0.3 }}
           className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto"
         >
-          <Link href="/dashboard" className="w-full sm:w-auto flex items-center justify-center gap-2 bg-primary text-primary-foreground px-8 py-4 rounded-lg text-base font-semibold shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:shadow-[0_0_35px_rgba(59,130,246,0.5)] transition-all">
+          <Link href="/sign-up" className="w-full sm:w-auto flex items-center justify-center gap-2 bg-primary text-primary-foreground px-8 py-4 rounded-lg text-base font-semibold shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:shadow-[0_0_35px_rgba(59,130,246,0.5)] transition-all">
             Analyze My Career <ArrowRight className="w-4 h-4" />
           </Link>
           <button className="w-full sm:w-auto flex items-center justify-center gap-2 bg-transparent border border-border hover:bg-muted/30 text-foreground px-8 py-4 rounded-lg text-base font-medium transition-colors">
