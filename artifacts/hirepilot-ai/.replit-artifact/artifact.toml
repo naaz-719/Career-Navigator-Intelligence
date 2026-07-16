@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "HirePilot AI"
+version = "1.0.0"
+id = "artifacts/hirepilot-ai"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18490
+
+[services.development]
+run = "pnpm --filter @workspace/hirepilot-ai run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/hirepilot-ai", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/hirepilot-ai/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18490"
+BASE_PATH = "/"

@@ -1,0 +1,106 @@
+Build a production-quality SaaS web application called HirePilot AI.
+
+IMPORTANT:
+Do NOT build backend logic yet.
+Do NOT implement authentication.
+Do NOT use placeholder lorem ipsum.
+Focus only on creating an exceptional frontend and project structure.
+
+Tech Stack:
+- Next.js (latest)
+- TypeScript
+- Tailwind CSS
+- shadcn/ui
+- Framer Motion
+- Recharts
+- Lucide Icons
+
+Theme:
+Modern AI startup.
+Dark mode by default.
+Premium, futuristic, Apple + Linear + Stripe inspired UI.
+Responsive for desktop, tablet and mobile.
+
+Brand:
+HirePilot AI
+
+Tagline:
+Know Before You Apply. Know Before You Move.
+
+Navigation:
+
+- Dashboard
+- Career Intelligence
+- Career Twin
+- Career Multiverse
+- Jobs
+- Resume Studio
+- Interview Coach
+- Relocation
+- Salary Intelligence
+- Nationalization Intelligence
+- Settings
+
+Landing Page should have:
+
+Hero Section
+Headline:
+"The World's First AI Career Intelligence Platform for GCC Professionals"
+
+Subheading:
+Stop guessing your next career move.
+HirePilot AI analyzes your profile, GCC hiring trends, salary benchmarks, visa status and nationalization policies to recommend the career path with the highest probability of success.
+
+Buttons:
+Analyze My Career
+Watch Demo
+
+Add beautiful sections:
+
+- Features
+- How It Works
+- Why HirePilot
+- GCC Countries
+- Footer
+
+Dashboard should contain beautiful cards for:
+
+Career Score
+Best Country
+Salary Potential
+Top Skills Missing
+Interview Readiness
+Career Timeline
+Latest Opportunities
+Recent Career Simulations
+
+Create empty pages with premium UI for:
+
+Career Intelligence
+Career Twin
+Career Multiverse
+Jobs
+Resume Studio
+Interview Coach
+Relocation Planner
+Salary Intelligence
+Nationalization Dashboard
+Settings
+
+Use realistic sample charts.
+
+Use animations.
+
+Use glassmorphism.
+
+Use gradients.
+
+Use professional icons.
+
+Everything should feel like a funded AI startup.
+
+Do NOT connect APIs yet.
+
+Generate clean reusable components.
+
+Use a scalable folder structure.
