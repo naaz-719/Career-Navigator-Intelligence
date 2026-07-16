@@ -1,13 +1,13 @@
 import React, { useState, KeyboardEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Sparkles, ChevronDown, ChevronUp, X, Plus, Zap, AlertCircle
-} from 'lucide-react';
+import { Sparkles, ChevronDown, ChevronUp, X, Plus, Zap, AlertCircle } from 'lucide-react';
 import type { UserProfile } from './types';
 
 interface Props {
   onSubmit: (profile: UserProfile) => void;
   isLoading?: boolean;
+  /** Pre-populate form from the shared AppProfile */
+  initialProfile?: Partial<Omit<UserProfile, 'question'>>;
 }
 
 const EXAMPLE_QUESTIONS = [
@@ -46,33 +46,34 @@ const CAREER_GOALS = [
 ];
 
 const EDUCATION_LEVELS = [
-  'High School / Diploma', 'Bachelor\'s Degree', 'Master\'s Degree', 'MBA', 'PhD', 'Professional Certification',
+  'High School / Diploma', "Bachelor's Degree", "Master's Degree", 'MBA', 'PhD', 'Professional Certification',
 ];
 
 const SUGGESTED_SKILLS: Record<string, string[]> = {
-  Technology: ['Python', 'JavaScript', 'React', 'AWS', 'Azure', 'AI/ML', 'SQL', 'DevOps', 'Kubernetes', 'TypeScript'],
-  'Finance & Banking': ['Financial Modelling', 'Bloomberg', 'Risk Management', 'Treasury', 'Compliance', 'IFRS', 'CFA'],
-  Healthcare: ['Clinical Management', 'EMR Systems', 'Patient Care', 'HAAD', 'DHA', 'Surgery', 'Radiology'],
+  Technology:            ['Python', 'JavaScript', 'React', 'AWS', 'Azure', 'AI/ML', 'SQL', 'DevOps', 'Kubernetes', 'TypeScript'],
+  'Finance & Banking':  ['Financial Modelling', 'Bloomberg', 'Risk Management', 'Treasury', 'Compliance', 'IFRS', 'CFA'],
+  Healthcare:           ['Clinical Management', 'EMR Systems', 'Patient Care', 'HAAD', 'DHA', 'Surgery', 'Radiology'],
+  'Energy & Oil & Gas': ['HSE Management', 'Asset Integrity', 'Project Controls', 'FEED', 'Commissioning', 'SAP PM'],
 };
 
-export default function InputForm({ onSubmit, isLoading }: Props) {
-  const [question, setQuestion] = useState('');
+export default function InputForm({ onSubmit, isLoading, initialProfile }: Props) {
+  const [question, setQuestion]   = useState('');
   const [showProfile, setShowProfile] = useState(false);
-  const [skillInput, setSkillInput] = useState('');
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [skillInput, setSkillInput]   = useState('');
+  const [errors, setErrors]           = useState<Record<string, string>>({});
 
   const [profile, setProfile] = useState<Omit<UserProfile, 'question'>>({
-    nationality: 'Egyptian',
-    visaStatus: 'Employment Visa',
-    currentRole: '',
-    yearsExperience: 6,
-    skills: ['Python', 'AWS', 'SQL'],
-    education: "Bachelor's Degree",
-    currentSalary: 22000,
-    targetSalary: 35000,
-    targetCountries: ['United Arab Emirates', 'Saudi Arabia'],
-    careerGoal: 'Get a new job in GCC',
-    sector: 'Technology',
+    nationality:     initialProfile?.nationality     ?? 'Egyptian',
+    visaStatus:      initialProfile?.visaStatus      ?? 'Employment Visa',
+    currentRole:     initialProfile?.currentRole     ?? '',
+    yearsExperience: initialProfile?.yearsExperience ?? 6,
+    skills:          initialProfile?.skills          ? [...initialProfile.skills] : ['Python', 'AWS', 'SQL'],
+    education:       initialProfile?.education       ?? "Bachelor's Degree",
+    currentSalary:   initialProfile?.currentSalary   ?? 22000,
+    targetSalary:    initialProfile?.targetSalary    ?? 35000,
+    targetCountries: initialProfile?.targetCountries ? [...initialProfile.targetCountries] : ['United Arab Emirates', 'Saudi Arabia'],
+    careerGoal:      initialProfile?.careerGoal      ?? 'Get a new job in GCC',
+    sector:          initialProfile?.sector          ?? 'Technology',
   });
 
   const set = (key: keyof typeof profile, val: unknown) =>
@@ -80,9 +81,7 @@ export default function InputForm({ onSubmit, isLoading }: Props) {
 
   const addSkill = (skill: string) => {
     const s = skill.trim();
-    if (s && !profile.skills.includes(s)) {
-      set('skills', [...profile.skills, s]);
-    }
+    if (s && !profile.skills.includes(s)) set('skills', [...profile.skills, s]);
     setSkillInput('');
   };
 
@@ -90,8 +89,7 @@ export default function InputForm({ onSubmit, isLoading }: Props) {
     set('skills', profile.skills.filter((s) => s !== skill));
 
   const toggleCountry = (c: string) => {
-    set(
-      'targetCountries',
+    set('targetCountries',
       profile.targetCountries.includes(c)
         ? profile.targetCountries.filter((x) => x !== c)
         : [...profile.targetCountries, c]
@@ -100,10 +98,10 @@ export default function InputForm({ onSubmit, isLoading }: Props) {
 
   const validate = () => {
     const errs: Record<string, string> = {};
-    if (!question.trim()) errs.question = 'Please enter your career question';
-    if (!profile.currentRole.trim()) errs.currentRole = 'Required';
+    if (!question.trim())           errs.question    = 'Please enter your career question';
+    if (!profile.currentRole.trim())errs.currentRole = 'Required';
     if (profile.targetCountries.length === 0) errs.countries = 'Select at least one country';
-    if (profile.skills.length === 0) errs.skills = 'Add at least one skill';
+    if (profile.skills.length === 0)          errs.skills    = 'Add at least one skill';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -138,15 +136,10 @@ export default function InputForm({ onSubmit, isLoading }: Props) {
             </p>
           )}
         </div>
-
-        {/* Example question chips */}
         <div className="mt-3 flex flex-wrap gap-2">
           {EXAMPLE_QUESTIONS.map((q) => (
-            <button
-              key={q}
-              onClick={() => setQuestion(q)}
-              className="text-xs px-3 py-1.5 rounded-full border border-border/50 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-all"
-            >
+            <button key={q} onClick={() => setQuestion(q)}
+              className="text-xs px-3 py-1.5 rounded-full border border-border/50 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-all">
               {q}
             </button>
           ))}
@@ -170,11 +163,7 @@ export default function InputForm({ onSubmit, isLoading }: Props) {
               </p>
             </div>
           </div>
-          {showProfile ? (
-            <ChevronUp className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          )}
+          {showProfile ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
         </button>
 
         <AnimatePresence>
@@ -191,31 +180,19 @@ export default function InputForm({ onSubmit, isLoading }: Props) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
                     <label className="field-label">Nationality</label>
-                    <select
-                      value={profile.nationality}
-                      onChange={(e) => set('nationality', e.target.value)}
-                      className="field-input"
-                    >
+                    <select value={profile.nationality} onChange={(e) => set('nationality', e.target.value)} className="field-input">
                       {NATIONALITIES.map((n) => <option key={n}>{n}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="field-label">Visa Status</label>
-                    <select
-                      value={profile.visaStatus}
-                      onChange={(e) => set('visaStatus', e.target.value)}
-                      className="field-input"
-                    >
+                    <select value={profile.visaStatus} onChange={(e) => set('visaStatus', e.target.value)} className="field-input">
                       {VISA_STATUSES.map((v) => <option key={v}>{v}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="field-label">Education</label>
-                    <select
-                      value={profile.education}
-                      onChange={(e) => set('education', e.target.value)}
-                      className="field-input"
-                    >
+                    <select value={profile.education} onChange={(e) => set('education', e.target.value)} className="field-input">
                       {EDUCATION_LEVELS.map((e) => <option key={e}>{e}</option>)}
                     </select>
                   </div>
@@ -228,21 +205,13 @@ export default function InputForm({ onSubmit, isLoading }: Props) {
                       Current Role / Job Title
                       {errors.currentRole && <span className="ml-2 text-destructive text-xs">{errors.currentRole}</span>}
                     </label>
-                    <input
-                      type="text"
-                      value={profile.currentRole}
-                      onChange={(e) => set('currentRole', e.target.value)}
+                    <input type="text" value={profile.currentRole} onChange={(e) => set('currentRole', e.target.value)}
                       placeholder="e.g. Senior Software Engineer"
-                      className={`field-input ${errors.currentRole ? 'border-destructive' : ''}`}
-                    />
+                      className={`field-input ${errors.currentRole ? 'border-destructive' : ''}`} />
                   </div>
                   <div>
                     <label className="field-label">Sector</label>
-                    <select
-                      value={profile.sector}
-                      onChange={(e) => set('sector', e.target.value)}
-                      className="field-input"
-                    >
+                    <select value={profile.sector} onChange={(e) => set('sector', e.target.value)} className="field-input">
                       {SECTORS.map((s) => <option key={s}>{s}</option>)}
                     </select>
                   </div>
@@ -254,11 +223,9 @@ export default function InputForm({ onSubmit, isLoading }: Props) {
                     Years of Experience
                     <span className="ml-2 text-primary font-semibold">{profile.yearsExperience} years</span>
                   </label>
-                  <input
-                    type="range" min={0} max={25} value={profile.yearsExperience}
+                  <input type="range" min={0} max={25} value={profile.yearsExperience}
                     onChange={(e) => set('yearsExperience', Number(e.target.value))}
-                    className="w-full h-2 rounded-full accent-primary bg-muted cursor-pointer"
-                  />
+                    className="w-full h-2 rounded-full accent-primary bg-muted cursor-pointer" />
                   <div className="flex justify-between text-xs text-muted-foreground mt-1">
                     <span>0 yrs</span><span>5 yrs</span><span>10 yrs</span><span>15 yrs</span><span>20+ yrs</span>
                   </div>
@@ -279,24 +246,18 @@ export default function InputForm({ onSubmit, isLoading }: Props) {
                         </button>
                       </span>
                     ))}
-                    <input
-                      value={skillInput}
-                      onChange={(e) => setSkillInput(e.target.value)}
+                    <input value={skillInput} onChange={(e) => setSkillInput(e.target.value)}
                       onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
                         if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addSkill(skillInput); }
                       }}
                       placeholder="Type & press Enter..."
-                      className="flex-1 min-w-[120px] bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
-                    />
+                      className="flex-1 min-w-[120px] bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none" />
                   </div>
                   {suggestedSkills.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {suggestedSkills.filter((s) => !profile.skills.includes(s)).slice(0, 7).map((s) => (
-                        <button
-                          key={s}
-                          onClick={() => addSkill(s)}
-                          className="flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-dashed border-border/60 text-muted-foreground hover:border-primary/50 hover:text-primary transition-all"
-                        >
+                        <button key={s} onClick={() => addSkill(s)}
+                          className="flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-dashed border-border/60 text-muted-foreground hover:border-primary/50 hover:text-primary transition-all">
                           <Plus className="h-2.5 w-2.5" /> {s}
                         </button>
                       ))}
@@ -310,26 +271,16 @@ export default function InputForm({ onSubmit, isLoading }: Props) {
                     <label className="field-label">Current Monthly Salary (AED)</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">AED</span>
-                      <input
-                        type="number"
-                        value={profile.currentSalary}
-                        onChange={(e) => set('currentSalary', Number(e.target.value))}
-                        className="field-input pl-12"
-                        placeholder="22000"
-                      />
+                      <input type="number" value={profile.currentSalary} onChange={(e) => set('currentSalary', Number(e.target.value))}
+                        className="field-input pl-12" placeholder="22000" />
                     </div>
                   </div>
                   <div>
                     <label className="field-label">Target Monthly Salary (AED)</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">AED</span>
-                      <input
-                        type="number"
-                        value={profile.targetSalary}
-                        onChange={(e) => set('targetSalary', Number(e.target.value))}
-                        className="field-input pl-12"
-                        placeholder="35000"
-                      />
+                      <input type="number" value={profile.targetSalary} onChange={(e) => set('targetSalary', Number(e.target.value))}
+                        className="field-input pl-12" placeholder="35000" />
                     </div>
                   </div>
                 </div>
@@ -344,15 +295,10 @@ export default function InputForm({ onSubmit, isLoading }: Props) {
                     {GCC_COUNTRIES.map((c) => {
                       const selected = profile.targetCountries.includes(c);
                       return (
-                        <button
-                          key={c}
-                          onClick={() => toggleCountry(c)}
+                        <button key={c} onClick={() => toggleCountry(c)}
                           className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
-                            selected
-                              ? 'border-primary/60 bg-primary/10 text-primary'
-                              : 'border-border/50 text-muted-foreground hover:border-border hover:text-foreground'
-                          }`}
-                        >
+                            selected ? 'border-primary/60 bg-primary/10 text-primary' : 'border-border/50 text-muted-foreground hover:border-border hover:text-foreground'
+                          }`}>
                           <div className={`h-4 w-4 rounded border flex items-center justify-center transition-all ${selected ? 'bg-primary border-primary' : 'border-border'}`}>
                             {selected && <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 10 10"><path d="M1.5 5l2.5 2.5 5-5" stroke="currentColor" strokeWidth={1.5} fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                           </div>
@@ -368,15 +314,10 @@ export default function InputForm({ onSubmit, isLoading }: Props) {
                   <label className="field-label">Primary Career Goal</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
                     {CAREER_GOALS.map((g) => (
-                      <button
-                        key={g}
-                        onClick={() => set('careerGoal', g)}
+                      <button key={g} onClick={() => set('careerGoal', g)}
                         className={`text-left px-3 py-2 rounded-lg border text-sm transition-all ${
-                          profile.careerGoal === g
-                            ? 'border-accent/60 bg-accent/10 text-accent'
-                            : 'border-border/50 text-muted-foreground hover:border-border hover:text-foreground'
-                        }`}
-                      >
+                          profile.careerGoal === g ? 'border-accent/60 bg-accent/10 text-accent' : 'border-border/50 text-muted-foreground hover:border-border hover:text-foreground'
+                        }`}>
                         {g}
                       </button>
                     ))}

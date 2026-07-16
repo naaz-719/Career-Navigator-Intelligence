@@ -8,11 +8,12 @@ import ResultPanel from '@/components/decision-engine/ResultPanel';
 
 import type { UserProfile, ReasoningModule, DecisionResult, ModuleId } from '@/components/decision-engine/types';
 import { MODULE_DEFINITIONS, runDecisionEngine } from '@/services/decisionEngine';
+import { useProfile } from '@/context/ProfileContext';
+import type { AppProfile } from '@/context/ProfileContext';
 
 // ─── Step type ────────────────────────────────────────────────────────────────
 type Step = 'input' | 'reasoning' | 'result';
 
-// ─── Initial module state factory ────────────────────────────────────────────
 function buildInitialModules(): ReasoningModule[] {
   return MODULE_DEFINITIONS.map((def) => ({
     ...def,
@@ -23,8 +24,33 @@ function buildInitialModules(): ReasoningModule[] {
   }));
 }
 
+// Convert AppProfile → InputForm initial values (Omit<UserProfile, 'question'>)
+function appProfileToFormValues(p: AppProfile): Omit<UserProfile, 'question'> {
+  return {
+    nationality:    p.nationality,
+    visaStatus:     p.visaStatus,
+    currentRole:    p.currentRole,
+    yearsExperience:p.yearsExperience,
+    skills:         [...p.skills],
+    education:      p.education,
+    currentSalary:  p.currentSalary,
+    targetSalary:   p.targetSalary,
+    targetCountries:[...p.targetCountries],
+    careerGoal:     p.careerGoal,
+    sector:         p.sector,
+  };
+}
+
+// Merge a completed UserProfile back into AppProfile (strip the question field)
+function engineProfileToAppProfile(u: UserProfile): Partial<AppProfile> {
+  const { question: _q, ...rest } = u;
+  return rest;
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function AIDecisionEnginePage() {
+  const { profile, mergeFromAnalysis, setLastAnalysis } = useProfile();
+
   const [step, setStep] = useState<Step>('input');
   const [modules, setModules] = useState<ReasoningModule[]>(buildInitialModules());
   const [currentModuleIndex, setCurrentModuleIndex] = useState(0);
@@ -33,24 +59,24 @@ export default function AIDecisionEnginePage() {
   const moduleStartTimes = useRef<Record<string, number>>({});
 
   const updateModule = useCallback((id: ModuleId, patch: Partial<ReasoningModule>) => {
-    setModules((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, ...patch } : m))
-    );
+    setModules((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
   }, []);
 
-  const handleSubmit = useCallback(async (profile: UserProfile) => {
+  const handleSubmit = useCallback(async (engineProfile: UserProfile) => {
     setIsLoading(true);
     const freshModules = buildInitialModules();
     setModules(freshModules);
     setCurrentModuleIndex(0);
     setResult(null);
 
-    // Small delay so the step transition feels intentional
+    // Merge submitted profile into shared app profile (persists across all pages)
+    mergeFromAnalysis(engineProfileToAppProfile(engineProfile));
+
     await new Promise((r) => setTimeout(r, 300));
     setStep('reasoning');
     setIsLoading(false);
 
-    await runDecisionEngine(profile, {
+    await runDecisionEngine(engineProfile, {
       onModuleStart: (moduleId) => {
         const idx = MODULE_DEFINITIONS.findIndex((m) => m.id === moduleId);
         setCurrentModuleIndex(idx);
@@ -59,9 +85,7 @@ export default function AIDecisionEnginePage() {
       },
       onThought: (moduleId, thought) => {
         setModules((prev) =>
-          prev.map((m) =>
-            m.id === moduleId ? { ...m, thoughts: [...m.thoughts, thought] } : m
-          )
+          prev.map((m) => m.id === moduleId ? { ...m, thoughts: [...m.thoughts, thought] } : m)
         );
       },
       onModuleComplete: (moduleId, summary) => {
@@ -70,11 +94,12 @@ export default function AIDecisionEnginePage() {
       },
       onComplete: (engineResult) => {
         setResult(engineResult);
-        // Brief pause so the user sees all modules "done" before transitioning
+        // Persist the result to global context so Dashboard can read hire probability
+        setLastAnalysis(engineResult);
         setTimeout(() => setStep('result'), 800);
       },
     });
-  }, [updateModule]);
+  }, [updateModule, mergeFromAnalysis, setLastAnalysis]);
 
   const handleReset = useCallback(() => {
     setStep('input');
@@ -82,6 +107,9 @@ export default function AIDecisionEnginePage() {
     setCurrentModuleIndex(0);
     setResult(null);
   }, []);
+
+  // Pre-populate form from shared profile
+  const initialFormValues = appProfileToFormValues(profile);
 
   return (
     <div className="space-y-8">
@@ -106,12 +134,10 @@ export default function AIDecisionEnginePage() {
           {(['input', 'reasoning', 'result'] as Step[]).map((s, i) => {
             const labels = ['Question', 'Analysis', 'Recommendation'];
             const isActive = s === step;
-            const isPast = ['input', 'reasoning', 'result'].indexOf(step) > i;
+            const isPast   = ['input', 'reasoning', 'result'].indexOf(step) > i;
             return (
               <React.Fragment key={s}>
-                <span className={`font-medium transition-colors ${
-                  isActive ? 'text-primary' : isPast ? 'text-muted-foreground' : 'text-muted-foreground/40'
-                }`}>
+                <span className={`font-medium transition-colors ${isActive ? 'text-primary' : isPast ? 'text-muted-foreground' : 'text-muted-foreground/40'}`}>
                   {labels[i]}
                 </span>
                 {i < 2 && <ChevronRight className={`h-3.5 w-3.5 flex-shrink-0 ${isPast ? 'text-muted-foreground/60' : 'text-muted-foreground/25'}`} />}
@@ -121,21 +147,18 @@ export default function AIDecisionEnginePage() {
         </div>
       </div>
 
-      {/* ── Step indicator dots ── */}
+      {/* ── Step indicator ── */}
       <div className="flex items-center gap-3">
         {(['input', 'reasoning', 'result'] as Step[]).map((s, i) => {
-          const stepOrder = ['input', 'reasoning', 'result'];
-          const currentIdx = stepOrder.indexOf(step);
-          const isDone = currentIdx > i;
+          const order = ['input', 'reasoning', 'result'];
+          const isDone   = order.indexOf(step) > i;
           const isActive = s === step;
           return (
             <React.Fragment key={s}>
               <div className={`flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold transition-all duration-300 ${
-                isActive
-                  ? 'bg-primary text-white shadow-lg shadow-primary/30 scale-110'
-                  : isDone
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-muted/30 text-muted-foreground/40'
+                isActive ? 'bg-primary text-white shadow-lg shadow-primary/30 scale-110' :
+                isDone   ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                           'bg-muted/30 text-muted-foreground/40'
               }`}>
                 {isDone ? '✓' : i + 1}
               </div>
@@ -148,13 +171,13 @@ export default function AIDecisionEnginePage() {
           );
         })}
         <div className="ml-2 text-xs text-muted-foreground/60">
-          {step === 'input' && 'Enter your question and profile'}
+          {step === 'input'     && `Profile pre-filled · ${profile.name} · ${profile.currentRole}`}
           {step === 'reasoning' && 'AI is analysing across 6 intelligence modules…'}
-          {step === 'result' && 'Analysis complete — explainable recommendation ready'}
+          {step === 'result'    && 'Analysis complete — profile & all pages updated'}
         </div>
       </div>
 
-      {/* ── How it works callout (input step only) ── */}
+      {/* ── How it works (input step only) ── */}
       <AnimatePresence>
         {step === 'input' && (
           <motion.div
@@ -166,12 +189,12 @@ export default function AIDecisionEnginePage() {
           >
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
               {[
-                { step: 1, label: 'Profile Analysis', desc: 'Identity, skills & trajectory', color: 'text-blue-400' },
-                { step: 2, label: 'Policy Engine', desc: 'Visa, quotas & regulations', color: 'text-violet-400' },
-                { step: 3, label: 'Salary Engine', desc: 'Live market benchmarks', color: 'text-emerald-400' },
-                { step: 4, label: 'Market Intel', desc: 'Demand & ghost jobs', color: 'text-amber-400' },
-                { step: 5, label: 'Eligibility', desc: 'Sponsor & visa pathways', color: 'text-cyan-400' },
-                { step: 6, label: 'Recommendation', desc: 'Explainable output', color: 'text-primary' },
+                { step: 1, label: 'Profile Analysis',  desc: 'Identity, skills & trajectory',   color: 'text-blue-400' },
+                { step: 2, label: 'Policy Engine',     desc: 'Visa, quotas & regulations',      color: 'text-violet-400' },
+                { step: 3, label: 'Salary Engine',     desc: 'Live market benchmarks',          color: 'text-emerald-400' },
+                { step: 4, label: 'Market Intel',      desc: 'Demand & ghost jobs',             color: 'text-amber-400' },
+                { step: 5, label: 'Eligibility',       desc: 'Sponsor & visa pathways',         color: 'text-cyan-400' },
+                { step: 6, label: 'Recommendation',   desc: 'Explainable output',              color: 'text-primary' },
               ].map((item) => (
                 <div key={item.step} className="p-3 rounded-xl border border-border/30 bg-card/30 text-center">
                   <span className={`text-xs font-bold ${item.color}`}>{item.step}</span>
@@ -184,51 +207,51 @@ export default function AIDecisionEnginePage() {
         )}
       </AnimatePresence>
 
-      {/* ── Main content area ── */}
+      {/* ── Profile sync notice (input step only) ── */}
+      <AnimatePresence>
+        {step === 'input' && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl border border-primary/20 bg-primary/5"
+          >
+            <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+              <Brain className="h-3.5 w-3.5 text-primary" />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Your profile is <span className="text-primary font-medium">pre-filled</span> from your shared platform profile ({profile.name} · {profile.sector} · {profile.yearsExperience} yrs).
+              Submitting this analysis will <span className="text-foreground font-medium">update your profile</span> across Dashboard, Jobs, Career Intelligence, and all other pages.
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Main content ── */}
       <div className="rounded-2xl border border-border/40 bg-card/30 backdrop-blur-sm p-6 md:p-8">
         <AnimatePresence mode="wait">
           {step === 'input' && (
-            <motion.div
-              key="input"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.35 }}
-            >
-              <InputForm onSubmit={handleSubmit} isLoading={isLoading} />
-            </motion.div>
-          )}
-
-          {step === 'reasoning' && (
-            <motion.div
-              key="reasoning"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.35 }}
-            >
-              <ReasoningProgress
-                modules={modules}
-                currentModuleIndex={currentModuleIndex}
+            <motion.div key="input" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.35 }}>
+              <InputForm
+                onSubmit={handleSubmit}
+                isLoading={isLoading}
+                initialProfile={initialFormValues}
               />
             </motion.div>
           )}
-
+          {step === 'reasoning' && (
+            <motion.div key="reasoning" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.35 }}>
+              <ReasoningProgress modules={modules} currentModuleIndex={currentModuleIndex} />
+            </motion.div>
+          )}
           {step === 'result' && result && (
-            <motion.div
-              key="result"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.4 }}
-            >
+            <motion.div key="result" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.4 }}>
               <ResultPanel result={result} onReset={handleReset} />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* ── Footer disclaimer ── */}
       <p className="text-center text-xs text-muted-foreground/50 pb-4">
         AI Decision Engine v1.0 · Analysis based on GCC market data, government policy databases, and employer hiring patterns ·
         Results are indicative — consult a licensed immigration advisor for visa decisions
