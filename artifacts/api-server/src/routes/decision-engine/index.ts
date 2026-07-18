@@ -1,6 +1,7 @@
 // ─── AI Career Decision Engine — API Route ───────────────────────────────────
 // Receives a UserProfile, computes structured metrics from pure functions,
-// builds a grounded Claude prompt, and streams per-module reasoning via SSE.
+// builds a grounded Claude prompt using REAL published nationalization data,
+// and streams per-module reasoning via SSE.
 // The SSE event shape exactly matches the SimulationCallbacks in the frontend.
 
 import { Router } from "express";
@@ -9,7 +10,7 @@ import { logger } from "../../lib/logger.js";
 
 const router = Router();
 
-// ─── Pure metric helpers (mirrored from frontend engine) ──────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type RiskLevel = "High" | "Medium" | "Low";
 
@@ -31,64 +32,135 @@ interface UserProfile {
   [key: string]: unknown;
 }
 
-function tier(yrs: number): string {
-  if (yrs >= 12) return "Principal / VP";
-  if (yrs >= 8) return "Senior / Lead";
-  if (yrs >= 4) return "Mid-level";
-  return "Junior";
+interface QuotaInfo {
+  policyName: string;
+  quotaDetail: string;
+  riskLabel: RiskLevel;
+  sourceNote: string;
 }
 
-function sectorShort(sector: string): string {
-  const map: Record<string, string> = {
-    "Finance & Banking": "FinTech/Finance",
-    "Energy & Oil & Gas": "Energy",
-    "Construction & Real Estate": "Real Estate",
-    "Retail & E-commerce": "Retail/E-com",
-    Telecommunications: "Telecom",
-  };
-  return map[sector] ?? sector;
-}
-
-const JOB_COUNT_BASE: Record<string, number> = {
-  Technology: 9200,
-  "Finance & Banking": 5400,
-  Healthcare: 4100,
-  "Energy & Oil & Gas": 3800,
-  "Construction & Real Estate": 6200,
-  "Retail & E-commerce": 3400,
-  Telecommunications: 2900,
-};
-
-const TIME_TO_HIRE: Record<string, string> = {
-  Technology: "5–9 weeks",
-  "Finance & Banking": "8–14 weeks",
-  Healthcare: "6–12 weeks",
-  "Energy & Oil & Gas": "10–18 weeks",
-  "Construction & Real Estate": "8–16 weeks",
-  "Retail & E-commerce": "4–8 weeks",
-  Telecommunications: "7–13 weeks",
-};
-
-const NATL_RISK: Record<string, Record<string, string>> = {
+const NATIONALIZATION_DATA: Record<string, Record<string, QuotaInfo>> = {
   "United Arab Emirates": {
-    Technology: "Low",
-    "Finance & Banking": "Medium",
-    default: "Low-Medium",
+    "Finance & Banking": {
+      policyName: "Emiratisation (Nafis)",
+      quotaDetail: "45% Emiratisation target in banking by end of 2026",
+      riskLabel: "High",
+      sourceNote: "Published UAE banking-sector target",
+    },
+    default: {
+      policyName: "Emiratisation (Nafis)",
+      quotaDetail:
+        "10% skilled-role Emiratisation by end of 2026 for firms with 50+ employees; 30% target in insurance",
+      riskLabel: "Medium",
+      sourceNote: "Published UAE Emiratisation mandate",
+    },
+    Technology: {
+      policyName: "Emiratisation (Nafis)",
+      quotaDetail:
+        "Tech roles are typically treated as targets rather than hard mandates — lowest enforcement pressure in the GCC due to talent supply constraints",
+      riskLabel: "Low",
+      sourceNote: "Sector-pattern based — not a specific published percentage",
+    },
   },
   "Saudi Arabia": {
-    Technology: "Medium",
-    "Finance & Banking": "High",
-    default: "High",
+    Healthcare: {
+      policyName: "Saudisation (Nitaqat Mutawar)",
+      quotaDetail: "65% Saudization target in major hospitals",
+      riskLabel: "High",
+      sourceNote: "Published Nitaqat Mutawar sector target",
+    },
+    "Retail & E-commerce": {
+      policyName: "Saudisation (Nitaqat Mutawar)",
+      quotaDetail: "60% target for marketing & sales roles",
+      riskLabel: "High",
+      sourceNote: "Published Nitaqat Mutawar sector target",
+    },
+    "Construction & Real Estate": {
+      policyName: "Saudisation (Nitaqat Mutawar)",
+      quotaDetail:
+        "40% target in tourism/hospitality-adjacent construction & real estate roles",
+      riskLabel: "Medium",
+      sourceNote: "Published Nitaqat Mutawar sector target",
+    },
+    Technology: {
+      policyName: "Saudisation (Nitaqat)",
+      quotaDetail:
+        "Vision 2030 creates specialist exemptions for AI/Cloud roles; moderately affected relative to other sectors",
+      riskLabel: "Medium",
+      sourceNote: "Directional — not a specific published percentage",
+    },
+    default: {
+      policyName: "Saudisation (Nitaqat)",
+      quotaDetail:
+        "Sector-banded quotas ranging 12%-75% depending on company size and activity; aggregate national goal of 340,000 additional Saudi private-sector jobs by 2028",
+      riskLabel: "High",
+      sourceNote: "Published Nitaqat banding structure",
+    },
   },
-  Qatar: { default: "Low-Medium" },
-  Oman: { default: "Medium-High" },
-  Kuwait: { default: "High" },
-  Bahrain: { default: "Low" },
+  Qatar: {
+    default: {
+      policyName: "Qatarisation",
+      quotaDetail:
+        "20% Qatari nationals in the private sector targeted by 2030 (currently around 17%); Law No. 12 of 2024 introduces fines for non-compliance",
+      riskLabel: "Medium",
+      sourceNote: "Published national target",
+    },
+    Technology: {
+      policyName: "Qatarisation",
+      quotaDetail:
+        "Advisory/technical specialist roles remain largely open; general management roles face moderate restrictions",
+      riskLabel: "Low",
+      sourceNote: "Directional — not a specific published percentage",
+    },
+  },
+  Oman: {
+    "Finance & Banking": {
+      policyName: "Omanisation",
+      quotaDetail:
+        "Banking-sector Omanisation can exceed 90% in some operational categories",
+      riskLabel: "High",
+      sourceNote: "Published sector figure",
+    },
+    default: {
+      policyName: "Omanisation",
+      quotaDetail:
+        "Sector-specific rates ranging 35%-90%+; Ministerial Decision 602/2025 gives a 30% fee reduction for compliant firms and doubles fees for non-compliant firms",
+      riskLabel: "Medium",
+      sourceNote: "Published range + 2025 ministerial decision",
+    },
+  },
+  Bahrain: {
+    default: {
+      policyName: "Bahrainisation",
+      quotaDetail:
+        "Generally the lowest quotas in the GCC; flexible fee-based system, and Bahrain has largely abolished the kafala sponsorship system",
+      riskLabel: "Low",
+      sourceNote: "Published — most flexible GCC framework",
+    },
+  },
+  Kuwait: {
+    default: {
+      policyName: "Kuwaitisation",
+      quotaDetail:
+        "100% Kuwaiti nationals mandated in government roles; private-sector quotas are rising sharply and are among the most aggressive in the GCC",
+      riskLabel: "High",
+      sourceNote: "Published policy direction",
+    },
+  },
 };
 
-function getNatRisk(country: string, sector: string): string {
-  const entry = NATL_RISK[country] ?? {};
-  return entry[sector] ?? entry["default"] ?? "Medium";
+function getQuotaInfo(country: string, sector: string): QuotaInfo {
+  const entry = NATIONALIZATION_DATA[country] ?? {};
+  return (
+    entry[sector] ??
+    entry["default"] ?? {
+      policyName: "National quota policy",
+      quotaDetail:
+        "Specific figure not available for this country/sector combination — treat as moderate risk pending direct verification",
+      riskLabel: "Medium",
+      sourceNote: "No specific published data found — estimated",
+    }
+  );
 }
 
 function computeHireProbability(p: UserProfile): number {
@@ -100,9 +172,8 @@ function computeHireProbability(p: UserProfile): number {
   const salaryDebt =
     Math.max(
       0,
-      Math.round(
-        ((p.targetSalary - p.currentSalary) / p.currentSalary) * 100
-      ) - 30
+      Math.round(((p.targetSalary - p.currentSalary) / p.currentSalary) * 100) -
+        30,
     ) * 0.12;
   const eduScore =
     p.education.includes("Master") ||
@@ -110,7 +181,10 @@ function computeHireProbability(p: UserProfile): number {
     p.education.includes("PhD")
       ? 5
       : 0;
-  return Math.min(96, base + expScore + skillScore + sectScore + eduScore - salaryDebt);
+  return Math.min(
+    96,
+    base + expScore + skillScore + sectScore + eduScore - salaryDebt,
+  );
 }
 
 function computeConfidence(p: UserProfile): number {
@@ -127,56 +201,41 @@ function computeConfidence(p: UserProfile): number {
   return Math.min(94, 60 + completeness * 4 + Math.min(p.yearsExperience, 8));
 }
 
-// ─── Build grounded context for Claude ───────────────────────────────────────
-
 function buildContext(p: UserProfile): string {
   const hirePct = computeHireProbability(p);
   const confidence = computeConfidence(p);
-  const base = JOB_COUNT_BASE[p.sector] ?? 5000;
-  const ghost = Math.round(base * 0.314);
-  const legit = base - ghost;
   const delta = Math.round(
-    ((p.targetSalary - p.currentSalary) / p.currentSalary) * 100
+    ((p.targetSalary - p.currentSalary) / p.currentSalary) * 100,
   );
-  const p50 = Math.round(p.targetSalary * 0.87 / 1000);
-  const p75 = Math.round(p.targetSalary * 1.03 / 1000);
-  const p90 = Math.round(p.targetSalary * 1.18 / 1000);
-  const jdMatch = Math.min(95, 58 + p.yearsExperience * 3 + (p.skills.length >= 6 ? 6 : 2));
-  const sponsorCount = Math.round(650 + p.yearsExperience * 25);
-  const sponsorProb = Math.min(92, 52 + p.yearsExperience * 3 + (p.skills.length >= 5 ? 5 : 0));
   const primaryCountry = p.targetCountries[0] ?? "United Arab Emirates";
-  const natRisk = getNatRisk(primaryCountry, p.sector);
-  const timeToHire = TIME_TO_HIRE[p.sector] ?? "6–12 weeks";
+  const quota = getQuotaInfo(primaryCountry, p.sector);
   const hasGoldenVisa = p.targetSalary >= 30000;
-  const hasAISkills = p.skills.some(s =>
-    ["python", "ai", "ml", "machine learning", "cloud", "aws", "azure", "llm"].includes(s.toLowerCase())
+  const hasAISkills = p.skills.some((s) =>
+    [
+      "python",
+      "ai",
+      "ml",
+      "machine learning",
+      "cloud",
+      "aws",
+      "azure",
+      "llm",
+    ].includes(s.toLowerCase()),
   );
-  const velocity = p.sector === "Technology" ? 24 : p.sector === "Healthcare" ? 18 : p.sector === "Finance & Banking" ? 12 : 10;
-  const strongNationalities = ["Egyptian", "Indian", "Pakistani", "Jordanian", "Lebanese"];
-  const hasStrongBilateral = strongNationalities.includes(p.nationality);
 
   return `
-=== PRE-COMPUTED METRICS (use these exact numbers — do not invent alternatives) ===
-Hire probability: ${Math.round(hirePct)}%
-Confidence score: ${confidence}%
-Experience tier: ${tier(p.yearsExperience)}
-Salary delta: +${delta}% uplift over current
-UAE P50 for role/sector: AED ${p50}K/mo
-UAE P75: AED ${p75}K/mo
-UAE P90: AED ${p90}K/mo
-Salary feasibility: ${delta <= 20 ? "HIGH" : delta <= 40 ? "MEDIUM" : "CHALLENGING"}
-Total ${p.sector} postings GCC: ${base.toLocaleString()}
-Ghost jobs filtered (31.4%): ${ghost.toLocaleString()}
-Legitimate active roles: ${legit.toLocaleString()}
-YoY hiring velocity: +${velocity}% in UAE ${sectorShort(p.sector)}
-JD cosine-match score: ${jdMatch}%
-UAE sponsor count with ${p.nationality} hire history: ${sponsorCount}
-Sponsor conversion probability (90-day window): ${sponsorProb}%
-Primary country nationalization risk: ${natRisk}
-Time to hire estimate: ${timeToHire}
-UAE Golden Visa eligible (AED 30K/mo threshold): ${hasGoldenVisa ? "YES" : "NO — AED " + Math.round((30000 - p.targetSalary) / 1000) + "K below threshold"}
-AI/Cloud skills present: ${hasAISkills ? "YES — aligns with top-demand cluster" : "NO"}
-Strong bilateral employment framework: ${hasStrongBilateral ? "YES" : "NO"}
+=== VERIFIED PUBLISHED DATA (cite these as sourced facts, not estimates) ===
+Nationalization policy: ${quota.policyName}
+Quota detail: ${quota.quotaDetail}
+Source basis: ${quota.sourceNote}
+Nationalization risk for this sector/country: ${quota.riskLabel}
+
+=== COMPUTED FROM THIS USER'S OWN INPUTS (internal model — NOT an independent market survey; say so explicitly if you reference these) ===
+Hire probability estimate: ${Math.round(hirePct)}%
+Confidence in this assessment: ${confidence}%
+Requested salary uplift: +${delta}% over current salary
+UAE Golden Visa eligible (AED 30K/mo threshold): ${hasGoldenVisa ? "YES" : "NO — below threshold"}
+AI/Cloud skills present: ${hasAISkills ? "YES — high-demand cluster" : "NO"}
 
 === PROFESSIONAL PROFILE ===
 Name: ${p.name || "Not provided"}
@@ -188,15 +247,11 @@ Skills: ${p.skills.join(", ")}
 Education: ${p.education}
 Current salary: AED ${Math.round(p.currentSalary / 1000)}K/mo
 Target salary: AED ${Math.round(p.targetSalary / 1000)}K/mo
-Current country: ${p.currentCountry}
 Target countries: ${p.targetCountries.join(", ") || "Not specified"}
 Visa status: ${p.visaStatus}
-Career goal: ${p.careerGoal}
 User's question: "${p.question}"
 `.trim();
 }
-
-// ─── SSE helpers ─────────────────────────────────────────────────────────────
 
 type SSEEvent =
   | { type: "module_start"; moduleId: string }
@@ -209,13 +264,13 @@ function sendSSE(res: import("express").Response, event: SSEEvent) {
   res.write(`data: ${JSON.stringify(event)}\n\n`);
 }
 
-// ─── System prompt ────────────────────────────────────────────────────────────
-
 const SYSTEM_PROMPT = `You are an expert GCC career intelligence analyst with deep knowledge of UAE, Saudi Arabia, Qatar, Oman, Bahrain, and Kuwait labour markets, nationalization policies, visa regulations, and compensation benchmarks.
 
-You will receive a professional profile and a set of pre-computed metrics. Your task is to reason through 6 analytical modules, providing genuine expert insight grounded in the provided data. Use the exact numbers from the pre-computed metrics — your value is in interpretation, context, and actionable recommendations, not in inventing different numbers.
+You will receive a professional profile and a set of pre-computed metrics, split into two categories: VERIFIED PUBLISHED DATA (real, sourced nationalization/quota figures) and COMPUTED FROM THIS USER'S OWN INPUTS (an internal model estimate, not independent market data). Your task is to reason through 6 analytical modules, providing genuine expert insight grounded in the provided data.
 
-Write each module's reasoning as a series of concise, specific thought steps (6–8 per module). Each thought should be one substantive sentence — crisp, expert, and concrete. Think like a senior GCC recruiter who has placed hundreds of candidates, combined with a policy analyst who reads ministry circulars.
+Critical rule: be explicit about which numbers are VERIFIED PUBLISHED DATA versus COMPUTED FROM THIS USER'S OWN INPUTS. Never state an internally-computed estimate as if it were an independently verified market fact. Use the exact figures given — do not invent additional statistics, percentages, or counts that were not provided to you.
+
+Write each module's reasoning as a series of concise, specific thought steps (6-8 per module). Each thought should be one substantive sentence — crisp, expert, and concrete. Think like a senior GCC recruiter who has placed hundreds of candidates, combined with a policy analyst who reads ministry circulars.
 
 Output ONLY in this exact format — no preamble, no conclusion outside the module blocks:
 
@@ -264,13 +319,11 @@ Output ONLY in this exact format — no preamble, no conclusion outside the modu
 
 Module guidance:
 - profile: Analyse nationality, experience tier, skills portfolio, education, visa mobility, and career trajectory signals.
-- policy: Cover nationalization quotas (Nitaqat/Saudisation, NAFIS/Emiratisation, Omanisation, Kuwaitisation), visa pathways, bilateral agreements, and Golden Visa eligibility.
-- salary: Benchmark compensation against GCC percentiles, analyse the salary jump feasibility, 0% tax advantage, negotiation strategy.
-- market: Assess real hiring demand, ghost job filtering, YoY velocity, sector health, skills signal strength.
-- eligibility: Sponsor probability, JD match quality, visa transfer friction, NOC requirements if applicable.
-- recommendation: Synthesise all 5 modules into a prioritised recommendation — primary market, hire probability, confidence, and top 3 actions.`;
-
-// ─── Route ────────────────────────────────────────────────────────────────────
+- policy: Cover the VERIFIED nationalization/quota data given to you (Nitaqat/Saudisation, Nafis/Emiratisation, Omanisation, Qatarisation, Kuwaitisation, Bahrainisation), visa pathways, and Golden Visa eligibility. Clearly distinguish sourced figures from any directional/estimated notes.
+- salary: Discuss the requested salary uplift and its feasibility. Be clear that specific percentile benchmarks are not available in this version — reason qualitatively about the 0% income tax advantage and negotiation strategy instead of inventing percentile numbers.
+- market: Assess sector hiring health and skills signal strength using only what's given — do not invent job counts, ghost-job percentages, or hiring velocity figures that were not provided.
+- eligibility: Discuss visa transfer friction, NOC requirements if applicable, and how the nationalization risk level affects sponsorship likelihood — without inventing a specific sponsor count.
+- recommendation: Synthesise all 5 modules into a prioritised recommendation — primary market, hire probability (labelled as an internal estimate), confidence, and top 3 concrete next actions.`;
 
 router.post("/analyze", async (req, res) => {
   const profile = req.body?.profile as UserProfile | undefined;
@@ -280,7 +333,6 @@ router.post("/analyze", async (req, res) => {
     return;
   }
 
-  // Ensure required fields have defaults
   const p: UserProfile = {
     name: "",
     nationality: "",
@@ -299,7 +351,6 @@ router.post("/analyze", async (req, res) => {
     ...profile,
   };
 
-  // Set SSE headers
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
@@ -327,15 +378,13 @@ router.post("/analyze", async (req, res) => {
       if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
         buffer += event.delta.text;
 
-        // Process buffer line by line
         const lines = buffer.split("\n");
-        buffer = lines.pop() ?? ""; // keep partial last line
+        buffer = lines.pop() ?? "";
 
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed) continue;
 
-          // Module start
           const startMatch = trimmed.match(/^\[MODULE_START:(\w+)\]$/);
           if (startMatch) {
             const modId = startMatch[1];
@@ -347,30 +396,25 @@ router.post("/analyze", async (req, res) => {
             continue;
           }
 
-          // Module summary start
           const summaryMatch = trimmed.match(/^\[MODULE_SUMMARY:(\w+)\]$/);
           if (summaryMatch) {
             inSummary = true;
             continue;
           }
 
-          // Module end
           const endMatch = trimmed.match(/^\[MODULE_END:(\w+)\]$/);
           if (endMatch) {
             inSummary = false;
-            // summary will be sent via the next summary-flagged line — already handled
             currentModule = "";
             continue;
           }
 
-          // Summary line (first non-empty line after MODULE_SUMMARY marker)
           if (inSummary && currentModule) {
             sendSSE(res, { type: "module_complete", moduleId: currentModule, summary: trimmed });
             inSummary = false;
             continue;
           }
 
-          // Thought line
           if (currentModule && !inSummary) {
             sendSSE(res, { type: "thought", moduleId: currentModule, text: trimmed });
           }
@@ -378,7 +422,6 @@ router.post("/analyze", async (req, res) => {
       }
     }
 
-    // Process any remaining buffer content
     if (buffer.trim() && currentModule && !inSummary) {
       const trimmed = buffer.trim();
       if (!trimmed.startsWith("[")) {
