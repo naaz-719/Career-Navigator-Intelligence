@@ -7,8 +7,36 @@ import {
   Trophy, AlertTriangle, ChevronDown, ChevronUp, RefreshCw,
   ArrowRight, CheckCircle2, Star, Zap, Target, TrendingUp,
   Globe, Building2, Clock, Shield, Copy, Check, Briefcase,
-  DollarSign, ExternalLink,
+  DollarSign, ExternalLink, Bot, FlaskConical,
 } from 'lucide-react';
+
+// ─── Source transparency badges ───────────────────────────────────────────────
+function ClaudeBadge({ label = 'Claude AI' }: { label?: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-violet-400 bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 rounded-full">
+      <Bot className="h-2.5 w-2.5 flex-shrink-0" /> {label}
+    </span>
+  );
+}
+
+function FormulaBadge({ label = 'Formula-estimated' }: { label?: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full">
+      <FlaskConical className="h-2.5 w-2.5 flex-shrink-0" /> {label}
+    </span>
+  );
+}
+
+// Data legend strip
+function DataLegend() {
+  return (
+    <div className="flex items-center gap-3 flex-wrap text-[10px]">
+      <ClaudeBadge label="Claude AI — reasoning text" />
+      <FormulaBadge label="Formula-estimated — numbers" />
+      <span className="text-muted-foreground/40 italic">All numbers are model-estimated, not live market data</span>
+    </div>
+  );
+}
 import { Link } from 'wouter';
 import type { DecisionResult, ModuleId, RiskLevel } from './types';
 import WhyPanel from '@/components/why/WhyPanel';
@@ -445,10 +473,15 @@ export default function ResultPanel({ result, onReset }: Props) {
             </div>
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed max-w-3xl">{result.primaryRecommendation}</p>
-          <p className="mt-3 text-xs text-muted-foreground/50">
-            Generated {new Date(result.generatedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })} ·
-            {result.profile.nationality} · {result.profile.currentRole} · {result.profile.yearsExperience} yrs · {result.profile.sector}
-          </p>
+          <div className="mt-3 flex items-center gap-3 flex-wrap">
+            <p className="text-xs text-muted-foreground/50">
+              Generated {new Date(result.generatedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })} ·
+              {result.profile.nationality} · {result.profile.currentRole} · {result.profile.yearsExperience} yrs · {result.profile.sector}
+            </p>
+          </div>
+          <div className="mt-2">
+            <DataLegend />
+          </div>
         </div>
       </div>
 

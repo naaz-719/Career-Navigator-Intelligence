@@ -535,7 +535,10 @@ export function generateResult(p: UserProfile): DecisionResult {
   };
 }
 
-// ─── Simulation Runner ───────────────────────────────────────────────────────
+// ─── Streaming Runner ─────────────────────────────────────────────────────────
+// Calls the Claude-powered API route and streams per-module reasoning via SSE.
+// generateResult() computes the structured DecisionResult on the frontend;
+// Claude provides the genuine natural-language reasoning for each module.
 
 export interface SimulationCallbacks {
   onModuleStart:    (moduleId: ModuleId) => void;
@@ -544,15 +547,100 @@ export interface SimulationCallbacks {
   onComplete:       (result: DecisionResult) => void;
 }
 
-// Slightly varied per-thought delay for a more organic feel
-const BASE_DELAY = 380;
-const MODULE_PAUSE = 280;
+const DECISION_ENGINE_URL = '/api/decision-engine/analyze';
+
+export async function runDecisionEngine(
+  profile: UserProfile,
+  callbacks: SimulationCallbacks,
+): Promise<void> {
+  let response: Response;
+
+  try {
+    response = await fetch(DECISION_ENGINE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profile }),
+    });
+  } catch (networkErr) {
+    console.error('[DecisionEngine] Network error — falling back to local simulation', networkErr);
+    return runLocalFallback(profile, callbacks);
+  }
+
+  if (!response.ok || !response.body) {
+    console.error('[DecisionEngine] API error', response.status, '— falling back to local simulation');
+    return runLocalFallback(profile, callbacks);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let gotAnyEvent = false;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      // Process complete SSE lines (split on \n\n)
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() ?? ''; // keep incomplete last chunk
+
+      for (const part of parts) {
+        const dataLine = part.trim();
+        if (!dataLine.startsWith('data:')) continue;
+
+        const json = dataLine.slice('data:'.length).trim();
+        if (!json) continue;
+
+        let event: Record<string, unknown>;
+        try {
+          event = JSON.parse(json);
+        } catch {
+          continue;
+        }
+
+        gotAnyEvent = true;
+        const type = event.type as string;
+
+        if (type === 'module_start') {
+          callbacks.onModuleStart(event.moduleId as ModuleId);
+        } else if (type === 'thought') {
+          callbacks.onThought(event.moduleId as ModuleId, event.text as string);
+        } else if (type === 'module_complete') {
+          callbacks.onModuleComplete(event.moduleId as ModuleId, event.summary as string);
+        } else if (type === 'error') {
+          console.error('[DecisionEngine] Server error:', event.message);
+          // Continue — we may have partial results already
+        } else if (type === 'done') {
+          callbacks.onComplete(generateResult(profile));
+          return;
+        }
+      }
+    }
+  } catch (streamErr) {
+    console.error('[DecisionEngine] Stream read error', streamErr);
+  }
+
+  // If we got some events but never got 'done', still complete with the result
+  if (gotAnyEvent) {
+    callbacks.onComplete(generateResult(profile));
+    return;
+  }
+
+  // Fully fell through — run local fallback
+  console.warn('[DecisionEngine] No events received — falling back to local simulation');
+  return runLocalFallback(profile, callbacks);
+}
+
+// ─── Local fallback (used if API is unavailable) ──────────────────────────────
 
 function delay(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
-export async function runDecisionEngine(
+async function runLocalFallback(
   profile: UserProfile,
   callbacks: SimulationCallbacks,
 ): Promise<void> {
@@ -591,15 +679,13 @@ export async function runDecisionEngine(
 
   for (const mod of modules) {
     callbacks.onModuleStart(mod.id);
-    await delay(MODULE_PAUSE);
-
+    await delay(280);
     for (const thought of mod.thoughts) {
       callbacks.onThought(mod.id, thought);
-      await delay(BASE_DELAY + Math.round(Math.random() * 140));
+      await delay(360);
     }
-
     callbacks.onModuleComplete(mod.id, mod.summary);
-    await delay(MODULE_PAUSE);
+    await delay(280);
   }
 
   callbacks.onComplete(generateResult(profile));
