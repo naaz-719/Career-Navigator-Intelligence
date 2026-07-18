@@ -329,11 +329,13 @@ router.post("/analyze", async (req, res) => {
   const profile = req.body?.profile as UserProfile | undefined;
 
   if (!profile || typeof profile !== "object") {
-    res.status(400).json({ error: "Missing or invalid profile in request body" });
+    res
+      .status(400)
+      .json({ error: "Missing or invalid profile in request body" });
     return;
   }
 
-  const p: UserProfile = {
+  const defaults = {
     name: "",
     nationality: "",
     currentRole: "",
@@ -348,6 +350,10 @@ router.post("/analyze", async (req, res) => {
     visaStatus: "",
     careerGoal: "",
     question: "",
+  };
+
+  const p: UserProfile = {
+    ...defaults,
     ...profile,
   };
 
@@ -372,10 +378,20 @@ router.post("/analyze", async (req, res) => {
     let currentModule = "";
     let inSummary = false;
 
-    const MODULE_IDS = ["profile", "policy", "salary", "market", "eligibility", "recommendation"];
+    const MODULE_IDS = [
+      "profile",
+      "policy",
+      "salary",
+      "market",
+      "eligibility",
+      "recommendation",
+    ];
 
     for await (const event of stream) {
-      if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+      if (
+        event.type === "content_block_delta" &&
+        event.delta.type === "text_delta"
+      ) {
         buffer += event.delta.text;
 
         const lines = buffer.split("\n");
@@ -410,13 +426,21 @@ router.post("/analyze", async (req, res) => {
           }
 
           if (inSummary && currentModule) {
-            sendSSE(res, { type: "module_complete", moduleId: currentModule, summary: trimmed });
+            sendSSE(res, {
+              type: "module_complete",
+              moduleId: currentModule,
+              summary: trimmed,
+            });
             inSummary = false;
             continue;
           }
 
           if (currentModule && !inSummary) {
-            sendSSE(res, { type: "thought", moduleId: currentModule, text: trimmed });
+            sendSSE(res, {
+              type: "thought",
+              moduleId: currentModule,
+              text: trimmed,
+            });
           }
         }
       }
@@ -425,7 +449,11 @@ router.post("/analyze", async (req, res) => {
     if (buffer.trim() && currentModule && !inSummary) {
       const trimmed = buffer.trim();
       if (!trimmed.startsWith("[")) {
-        sendSSE(res, { type: "thought", moduleId: currentModule, text: trimmed });
+        sendSSE(res, {
+          type: "thought",
+          moduleId: currentModule,
+          text: trimmed,
+        });
       }
     }
 
