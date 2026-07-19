@@ -12,6 +12,7 @@ import type { DecisionResult } from "@/components/decision-engine/types";
 // components/decision-engine/types.ts for that shape.
 export interface AppProfile {
   name: string;
+  email: string;
   nationality: string;
   currentRole: string;
   yearsExperience: number;
@@ -32,6 +33,7 @@ export interface AppProfile {
 
 export const DEFAULT_PROFILE: AppProfile = {
   name: "Ahmed",
+  email: "",
   nationality: "Egyptian",
   currentRole: "Senior Product Manager",
   yearsExperience: 8,

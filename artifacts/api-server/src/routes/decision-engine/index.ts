@@ -323,7 +323,7 @@ Module guidance:
 - salary: Discuss the requested salary uplift and its feasibility. Be clear that specific percentile benchmarks are not available in this version — reason qualitatively about the 0% income tax advantage and negotiation strategy instead of inventing percentile numbers.
 - market: Assess sector hiring health and skills signal strength using only what's given — do not invent job counts, ghost-job percentages, or hiring velocity figures that were not provided.
 - eligibility: Discuss visa transfer friction, NOC requirements if applicable, and how the nationalization risk level affects sponsorship likelihood — without inventing a specific sponsor count.
-- recommendation: Synthesise all 5 modules into a prioritised recommendation — primary market, hire probability (labelled as an internal estimate), confidence, and top 3 concrete next actions.`;
+- recommendation: Synthesise all 5 modules into a prioritised recommendation — primary market, hire probability (labelled as an internal estimate), confidence, top 3 concrete next actions, AND 1-2 specific, genuinely relevant courses or certifications this person should pursue given their skill gaps versus their target role (e.g. a real, well-known certification like "Google Data Analytics Certificate" or "Microsoft Power BI Data Analyst Associate" — only suggest ones that are real and well-known, do not invent course names).`;
 
 router.post("/analyze", async (req, res) => {
   const profile = req.body?.profile as UserProfile | undefined;
