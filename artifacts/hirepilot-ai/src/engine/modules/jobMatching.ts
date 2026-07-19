@@ -27,6 +27,7 @@ export interface EnrichedJob {
   requiredSkills: string[];
   match: number;
   flag: string;
+  link: string;
 }
 
 export interface JobMatchingResult extends IntelligenceResult {
@@ -135,6 +136,7 @@ export function computeJobMatching(profile: AppProfile): JobMatchingResult {
       requiredSkills,
       match,
       flag: FLAG_MAP[j.country] ?? "🌍",
+      link: j.link,
     };
   });
 
