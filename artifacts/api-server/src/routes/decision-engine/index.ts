@@ -318,7 +318,7 @@ Output ONLY in this exact format — no preamble, no conclusion outside the modu
 [MODULE_END:recommendation]
 
 Module guidance:
-- profile: Analyse nationality, experience tier, skills portfolio, education, visa mobility, and career trajectory signals.
+- profile: Analyse nationality, experience tier, skills portfolio, education, visa mobility, and career trajectory signals. Explicitly compare the person's listed skills against what their target role/sector typically requires, and call out the 2-3 most impactful specific gaps by name.
 - policy: Cover the VERIFIED nationalization/quota data given to you (Nitaqat/Saudisation, Nafis/Emiratisation, Omanisation, Qatarisation, Kuwaitisation, Bahrainisation), visa pathways, and Golden Visa eligibility. Clearly distinguish sourced figures from any directional/estimated notes.
 - salary: Discuss the requested salary uplift and its feasibility. Be clear that specific percentile benchmarks are not available in this version — reason qualitatively about the 0% income tax advantage and negotiation strategy instead of inventing percentile numbers.
 - market: Assess sector hiring health and skills signal strength using only what's given — do not invent job counts, ghost-job percentages, or hiring velocity figures that were not provided.
