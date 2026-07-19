@@ -17,6 +17,7 @@ export interface AppProfile {
   currentRole: string;
   yearsExperience: number;
   skills: string[];
+  projects: { title: string; org: string; period: string; bullets: string[] }[];
   education: string;
   sector: string;
   currentSalary: number; // AED / month
@@ -44,6 +45,7 @@ export const DEFAULT_PROFILE: AppProfile = {
     "Data Analytics",
     "Roadmapping",
   ],
+  projects: [],
   education: "Master's Degree",
   sector: "Technology",
   currentSalary: 22000,

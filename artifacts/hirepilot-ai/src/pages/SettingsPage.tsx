@@ -80,6 +80,7 @@ export default function SettingsPage() {
   const [form, setForm] = useState({
     name: profile.name,
     email: profile.email,
+    projects: profile.projects || [],
     nationality: profile.nationality,
     currentCountry: profile.currentCountry,
     currentRole: profile.currentRole,
@@ -268,6 +269,99 @@ export default function SettingsPage() {
                     placeholder="linkedin.com/in/yourhandle"
                     className="w-full bg-muted/30 border border-border/50 rounded-lg p-2.5 text-sm focus:outline-none focus:border-primary/50"
                   />
+                </div>
+                <div className="pt-4 border-t border-border/50">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
+                    Work Experience / Projects
+                  </label>
+                  {form.projects.map((proj, idx) => (
+                    <div
+                      key={idx}
+                      className="mb-3 p-3 rounded-lg border border-border/50 bg-muted/10 space-y-2"
+                    >
+                      <input
+                        type="text"
+                        placeholder="Title (e.g. Data Analyst)"
+                        value={proj.title}
+                        onChange={(e) => {
+                          const updated = [...form.projects];
+                          updated[idx] = {
+                            ...updated[idx],
+                            title: e.target.value,
+                          };
+                          setForm((f) => ({ ...f, projects: updated }));
+                        }}
+                        className="w-full bg-background/60 border border-border/50 rounded p-2 text-sm"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Organization / Project name"
+                        value={proj.org}
+                        onChange={(e) => {
+                          const updated = [...form.projects];
+                          updated[idx] = {
+                            ...updated[idx],
+                            org: e.target.value,
+                          };
+                          setForm((f) => ({ ...f, projects: updated }));
+                        }}
+                        className="w-full bg-background/60 border border-border/50 rounded p-2 text-sm"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Period (e.g. 2024 - Present)"
+                        value={proj.period}
+                        onChange={(e) => {
+                          const updated = [...form.projects];
+                          updated[idx] = {
+                            ...updated[idx],
+                            period: e.target.value,
+                          };
+                          setForm((f) => ({ ...f, projects: updated }));
+                        }}
+                        className="w-full bg-background/60 border border-border/50 rounded p-2 text-sm"
+                      />
+                      <textarea
+                        placeholder="What did you do? One achievement per line."
+                        value={proj.bullets.join("\n")}
+                        onChange={(e) => {
+                          const updated = [...form.projects];
+                          updated[idx] = {
+                            ...updated[idx],
+                            bullets: e.target.value.split("\n"),
+                          };
+                          setForm((f) => ({ ...f, projects: updated }));
+                        }}
+                        rows={3}
+                        className="w-full bg-background/60 border border-border/50 rounded p-2 text-sm"
+                      />
+                      <button
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            projects: f.projects.filter((_, i) => i !== idx),
+                          }))
+                        }
+                        className="text-xs text-red-400 hover:underline"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() =>
+                      setForm((f) => ({
+                        ...f,
+                        projects: [
+                          ...f.projects,
+                          { title: "", org: "", period: "", bullets: [""] },
+                        ],
+                      }))
+                    }
+                    className="w-full py-2 border border-dashed border-border/50 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:border-primary/50"
+                  >
+                    + Add Project / Experience
+                  </button>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
