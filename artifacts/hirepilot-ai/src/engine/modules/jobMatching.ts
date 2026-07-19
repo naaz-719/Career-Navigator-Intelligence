@@ -140,7 +140,7 @@ export function computeJobMatching(profile: AppProfile): JobMatchingResult {
     };
   });
 
-  const filtered = enriched.sort((a, b) => b.match - a.match).slice(0, 150);
+  const filtered = enriched.sort((a, b) => b.match - a.match);
 
   const avgSalary = profile.targetSalary;
   const ghostRate = 15;
