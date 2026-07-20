@@ -54,7 +54,7 @@ export default function CareerIntelligencePage() {
   React.useEffect(() => {
     async function loadData() {
       const response = await fetch(
-        "https://naazmulla.app.n8n.cloud/webhook-test/career-intelligence",
+        "https://naazmulla.app.n8n.cloud/webhook/career-intelligence",
         {
           method: "POST",
           headers: {
