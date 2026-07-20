@@ -5,26 +5,26 @@ import { defineConfig } from 'vite';
 
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
-// BASE_PATH defaults to '/' — the production build doesn't need this env var
-// because the static artifact is served at root by the Replit proxy.
-const basePath = process.env.BASE_PATH ?? '/';
+const rawPort = process.env.PORT;
 
-// PORT is only needed for the dev/preview server, not for `vite build`.
-// During the production build NODE_ENV is 'production' and the server/preview
-// sections are ignored by Vite, so we skip the PORT check entirely there.
-const isBuild = process.env.NODE_ENV === 'production';
+if (!rawPort) {
+  throw new Error(
+    'PORT environment variable is required but was not provided.',
+  );
+}
 
-let port = 3000; // fallback, never used in production builds
-if (!isBuild) {
-  const rawPort = process.env.PORT;
-  if (!rawPort) {
-    throw new Error('PORT environment variable is required but was not provided.');
-  }
-  const parsed = Number(rawPort);
-  if (Number.isNaN(parsed) || parsed <= 0) {
-    throw new Error(`Invalid PORT value: "${rawPort}"`);
-  }
-  port = parsed;
+const port = Number(rawPort);
+
+if (Number.isNaN(port) || port <= 0) {
+  throw new Error(`Invalid PORT value: "${rawPort}"`);
+}
+
+const basePath = process.env.BASE_PATH;
+
+if (!basePath) {
+  throw new Error(
+    'BASE_PATH environment variable is required but was not provided.',
+  );
 }
 
 export default defineConfig({

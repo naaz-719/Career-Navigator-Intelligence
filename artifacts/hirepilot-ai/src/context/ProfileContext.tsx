@@ -30,7 +30,6 @@ export interface AppProfile {
   languages: string[];
   linkedinUrl: string;
   preferredWorkStyle: "onsite" | "hybrid" | "remote" | "";
-  summaryOverride: string;
 }
 
 export const DEFAULT_PROFILE: AppProfile = {
@@ -57,8 +56,7 @@ export const DEFAULT_PROFILE: AppProfile = {
   careerGoal: "Get a new job in GCC",
   languages: ["English", "Arabic"],
   linkedinUrl: "",
-  preferredWorkStyle: "",
-  summaryOverride: "",
+  preferredWorkStyle: "hybrid",
 };
 
 // ─── Context shape ────────────────────────────────────────────────────────────
