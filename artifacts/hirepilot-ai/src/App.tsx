@@ -59,14 +59,10 @@ function Router() {
         </AppLayout>
       </Route>
       <Route path="/career-twin">
-        <AppLayout>
-          <CareerTwinPage />
-        </AppLayout>
+        <Redirect to="/ai-decision-engine" />
       </Route>
       <Route path="/career-multiverse">
-        <AppLayout>
-          <CareerMultiversePage />
-        </AppLayout>
+        <Redirect to="/ai-decision-engine" />
       </Route>
       <Route path="/jobs">
         <AppLayout>

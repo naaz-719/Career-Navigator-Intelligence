@@ -23,8 +23,6 @@ const NAV_ITEMS = [
     label: "Career Intelligence",
     href: "/career-intelligence",
   },
-  { icon: Bot, label: "Career Twin", href: "/career-twin" },
-  { icon: GitMerge, label: "Career Multiverse", href: "/career-multiverse" },
   { icon: Briefcase, label: "Jobs", href: "/jobs" },
   { icon: FileText, label: "Resume Studio", href: "/resume-studio" },
   { icon: Mic, label: "Interview Coach", href: "/interview-coach" },
