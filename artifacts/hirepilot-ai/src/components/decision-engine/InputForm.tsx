@@ -155,6 +155,7 @@ export default function InputForm({
   const [profile, setProfile] = useState<Omit<UserProfile, "question">>({
     name: initialProfile?.name ?? "",
     email: initialProfile?.email ?? "",
+    projects: initialProfile?.projects ?? [],
     nationality: initialProfile?.nationality ?? "Egyptian",
     visaStatus: initialProfile?.visaStatus ?? "Employment Visa",
     currentRole: initialProfile?.currentRole ?? "",
