@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   Sparkles,
   CheckCircle2,
@@ -7,6 +7,8 @@ import {
   Plus,
   X,
   Save,
+  UploadCloud,
+  FileText,
 } from "lucide-react";
 import { useProfile } from "@/context/ProfileContext";
 import { computeResumeScore } from "@/engine/modules/resumeScore";
@@ -24,6 +26,62 @@ interface CopilotResult {
   cover_letter: string;
   salary_estimate: string;
   interview_questions: InterviewQ[];
+}
+
+// ─── Small helper: load a script from CDN once, then reuse it ────────────────
+function loadScript(src: string, globalCheck: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if ((window as any)[globalCheck]) {
+      resolve();
+      return;
+    }
+    const existing = document.querySelector(
+      `script[src="${src}"]`,
+    ) as HTMLScriptElement | null;
+    if (existing) {
+      existing.addEventListener("load", () => resolve());
+      existing.addEventListener("error", () =>
+        reject(new Error(`Failed to load ${src}`)),
+      );
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(script);
+  });
+}
+
+async function extractPdfText(file: File): Promise<string> {
+  await loadScript(
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",
+    "pdfjsLib",
+  );
+  const pdfjsLib = (window as any).pdfjsLib;
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  const buffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+  let text = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    text += content.items.map((it: any) => it.str).join(" ") + "\n";
+  }
+  return text;
+}
+
+async function extractDocxText(file: File): Promise<string> {
+  await loadScript(
+    "https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js",
+    "mammoth",
+  );
+  const mammoth = (window as any).mammoth;
+  const buffer = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+  return result.value as string;
 }
 
 export default function ResumeStudioPage() {
@@ -78,6 +136,55 @@ export default function ResumeStudioPage() {
   const removeSkill = (idx: number) =>
     setSkills((s) => s.filter((_, i) => i !== idx));
 
+  // ─── Upload CV (PDF / DOCX / TXT) — replaces the typed resume for optimizing ──
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [uploadedCvText, setUploadedCvText] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase();
+      let text = "";
+      if (ext === "pdf") {
+        text = await extractPdfText(file);
+      } else if (ext === "docx") {
+        text = await extractDocxText(file);
+      } else if (ext === "txt") {
+        text = await file.text();
+      } else if (ext === "doc") {
+        throw new Error(
+          "Old .doc format isn't supported — please save as .docx or PDF and try again.",
+        );
+      } else {
+        throw new Error("Please upload a PDF, DOCX, or TXT file.");
+      }
+      if (!text.trim()) {
+        throw new Error("Couldn't find any text in that file.");
+      }
+      setUploadedCvText(text.trim());
+      setUploadedFileName(file.name);
+    } catch (err: any) {
+      setUploadError(
+        err?.message || "Couldn't read that file — try a different one.",
+      );
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const clearUpload = () => {
+    setUploadedCvText(null);
+    setUploadedFileName(null);
+    setUploadError(null);
+  };
+
   // ─── Resume Co-pilot (job-specific tailoring via n8n) ───────────────────────
   const [company, setCompany] = useState("");
   const [role, setRole] = useState(profile.currentRole || "");
@@ -113,7 +220,7 @@ export default function ResumeStudioPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          cv: buildCvText(),
+          cv: uploadedCvText || buildCvText(),
           jobDescription,
           company,
           role,
@@ -350,9 +457,52 @@ export default function ResumeStudioPage() {
           />
         </div>
 
-        <p className="text-xs text-muted-foreground italic">
-          Uses your resume above — no need to re-paste your CV.
-        </p>
+        {/* ─── Upload CV button ─────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.docx,.doc,.txt"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+          {!uploadedFileName ? (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="w-full flex items-center justify-center gap-2 border border-dashed border-primary/40 text-primary text-sm font-medium py-2.5 rounded-lg hover:bg-primary/10 transition-colors disabled:opacity-50"
+            >
+              {uploading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <UploadCloud className="w-4 h-4" />
+              )}
+              {uploading
+                ? "Reading your file..."
+                : "Upload CV (PDF, DOCX or TXT) from your PC or phone"}
+            </button>
+          ) : (
+            <div className="flex items-center justify-between gap-2 border border-primary/40 bg-primary/10 rounded-lg px-3 py-2.5">
+              <div className="flex items-center gap-2 text-sm text-primary min-w-0">
+                <FileText className="w-4 h-4 shrink-0" />
+                <span className="truncate">{uploadedFileName}</span>
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-green-500" />
+              </div>
+              <button
+                onClick={clearUpload}
+                className="text-xs text-muted-foreground hover:text-red-400 shrink-0"
+              >
+                Remove
+              </button>
+            </div>
+          )}
+          {uploadError && <p className="text-xs text-red-400">{uploadError}</p>}
+          <p className="text-xs text-muted-foreground italic">
+            {uploadedFileName
+              ? "Using your uploaded file for optimization — remove it to use the resume above instead."
+              : "Uses your resume above by default — or upload a CV file instead of retyping it."}
+          </p>
+        </div>
 
         {copilotError && (
           <div className="text-sm text-red-400">{copilotError}</div>
