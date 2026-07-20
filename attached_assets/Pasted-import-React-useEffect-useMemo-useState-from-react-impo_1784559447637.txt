@@ -1,0 +1,203 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import {
+  AreaChart,
+  Area,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+} from "recharts";
+
+import {
+  Activity,
+  Building2,
+  Globe,
+  Briefcase,
+  TrendingUp,
+  Calendar,
+} from "lucide-react";
+
+import { useProfile } from "@/context/ProfileContext";
+
+interface Job {
+  id: number;
+  title: string;
+  company: string;
+  location: string;
+  country: string;
+  postedDate: string;
+  searchKeyword: string;
+  functionGuess: string;
+  seniorityGuess: string;
+  link: string;
+  sources: string[];
+}
+
+const COLORS = [
+  "#3b82f6",
+  "#06b6d4",
+  "#22c55e",
+  "#f59e0b",
+  "#ef4444",
+  "#8b5cf6",
+];
+
+function groupCount(
+  jobs: Job[],
+  field: keyof Job
+): { name: string; value: number }[] {
+  const map = new Map<string, number>();
+
+  jobs.forEach((job) => {
+    const key = String(job[field]);
+
+    map.set(key, (map.get(key) || 0) + 1);
+  });
+
+  return [...map.entries()]
+    .map(([name, value]) => ({
+      name,
+      value,
+    }))
+    .sort((a, b) => b.value - a.value);
+}
+
+function monthKey(date: Date) {
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    year: "2-digit",
+  });
+}
+
+function createHiringTrend(jobs: Job[]) {
+  const map = new Map<string, number>();
+
+  jobs.forEach((job) => {
+    const d = new Date(job.postedDate);
+
+    if (isNaN(d.getTime())) return;
+
+    const key = monthKey(d);
+
+    map.set(key, (map.get(key) || 0) + 1);
+  });
+
+  return [...map.entries()].map(([month, jobs]) => ({
+    month,
+    jobs,
+  }));
+}
+
+function topCompanies(jobs: Job[]) {
+  return groupCount(jobs, "company").slice(0, 10);
+}
+
+function countryStats(jobs: Job[]) {
+  return groupCount(jobs, "country");
+}
+
+function functionStats(jobs: Job[]) {
+  return groupCount(jobs, "functionGuess");
+}
+
+function seniorityStats(jobs: Job[]) {
+  return groupCount(jobs, "seniorityGuess");
+}
+
+function sourceStats(jobs: Job[]) {
+  const map = new Map<string, number>();
+
+  jobs.forEach((job) => {
+    job.sources.forEach((source) => {
+      map.set(source, (map.get(source) || 0) + 1);
+    });
+  });
+
+  return [...map.entries()].map(([name, value]) => ({
+    name,
+    value,
+  }));
+}
+
+function recentJobs(jobs: Job[]) {
+  return [...jobs]
+    .sort(
+      (a, b) =>
+        new Date(b.postedDate).getTime() -
+        new Date(a.postedDate).getTime()
+    )
+    .slice(0, 10);
+}
+
+export default function CareerIntelligencePage() {
+  const { profile } = useProfile();
+
+  const [activeTab, setActiveTab] =
+    useState("market");
+
+  const [jobs, setJobs] = useState<Job[]>([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  useEffect(() => {
+    async function loadJobs() {
+      try {
+        const response = await fetch("/data/realJobs.json");
+
+        const data: Job[] = await response.json();
+
+        setJobs(data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadJobs();
+  }, []);
+
+  const filteredJobs = useMemo(() => {
+    return jobs.filter((job) => {
+      const role =
+        profile.currentRole.toLowerCase();
+
+      return (
+        job.searchKeyword
+          .toLowerCase()
+          .includes(role) ||
+        job.title.toLowerCase().includes(role)
+      );
+    });
+  }, [jobs, profile.currentRole]);
+
+  const totalJobs = filteredJobs.length;
+
+  const countries =
+    countryStats(filteredJobs);
+
+  const companies =
+    topCompanies(filteredJobs);
+
+  const functions =
+    functionStats(filteredJobs);
+
+  const seniority =
+    seniorityStats(filteredJobs);
+
+  const sources =
+    sourceStats(filteredJobs);
+
+  const hiringTrend =
+    createHiringTrend(filteredJobs);
+
+  const latestJobs =
+    recentJobs(filteredJobs);
