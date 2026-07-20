@@ -3,33 +3,34 @@
 // modules contain the real logic and backend seam comments.
 // To wire a real API: replace the relevant engine module function body with fetch().
 
-import type { AppProfile } from '@/context/ProfileContext';
-import { computeCareerScore }        from '@/engine/modules/careerScore';
-import { computeMarketDemand }       from '@/engine/modules/marketDemand';
-import { computeSalaryIntelligence } from '@/engine/modules/salaryIntelligence';
-import { computeNationalization }    from '@/engine/modules/nationalization';
-import { computeJobMatching }        from '@/engine/modules/jobMatching';
-import { computeCareerTwin }         from '@/engine/modules/careerTwin';
-import { computeRelocation }         from '@/engine/modules/relocation';
-import { computeResumeScore }        from '@/engine/modules/resumeScore';
-import { computeInterviewReadiness } from '@/engine/modules/interviewReadiness';
-import { computeCareerMultiverse }   from '@/engine/modules/careerMultiverse';
-import { SHORT_COUNTRY, FLAG_MAP }   from '@/engine/data';
+import type { AppProfile } from "@/context/ProfileContext";
+import { computeCareerScore } from "@/engine/modules/careerScore";
+import { computeMarketDemand } from "@/engine/modules/marketDemand";
+import { computeSalaryIntelligence } from "@/engine/modules/salaryIntelligence";
+import { computeNationalization } from "@/engine/modules/nationalization";
+import { computeJobMatching } from "@/engine/modules/jobMatching";
+import { computeCareerTwin } from "@/engine/modules/careerTwin";
+import { computeRelocation } from "@/engine/modules/relocation";
+import { computeResumeScore } from "@/engine/modules/resumeScore";
+import { computeInterviewReadiness } from "@/engine/modules/interviewReadiness";
+import { computeCareerMultiverse } from "@/engine/modules/careerMultiverse";
+import { SHORT_COUNTRY, FLAG_MAP } from "@/engine/data";
 
 // Re-export FLAG_MAP for components that import it from this module
 export { FLAG_MAP };
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 export function getDashboardMetrics(p: AppProfile) {
-  const cs   = computeCareerScore(p);
+  const cs = computeCareerScore(p);
   return {
-    careerScore:       cs.careerScore,
-    hireProbability:   cs.probability,
+    careerScore: cs.careerScore,
+    hireProbability: cs.probability,
     interviewReadiness: cs.interviewReadiness,
-    topCountry:        p.targetCountries[0] ?? 'United Arab Emirates',
-    topFlag:           FLAG_MAP[p.targetCountries[0] ?? 'United Arab Emirates'] ?? '🇦🇪',
-    topCountryShort:   SHORT_COUNTRY[p.targetCountries[0] ?? 'United Arab Emirates'] ?? 'UAE',
-    salaryPotential:   p.targetSalary,
+    topCountry: p.targetCountries[0] ?? "United Arab Emirates",
+    topFlag: FLAG_MAP[p.targetCountries[0] ?? "United Arab Emirates"] ?? "🇦🇪",
+    topCountryShort:
+      SHORT_COUNTRY[p.targetCountries[0] ?? "United Arab Emirates"] ?? "UAE",
+    salaryPotential: p.targetSalary,
   };
 }
 
@@ -54,7 +55,12 @@ export function getJobsData(p: AppProfile) {
 // ─── Career Intelligence ──────────────────────────────────────────────────────
 export function getMarketDemand(p: AppProfile) {
   const m = computeMarketDemand(p);
-  return { score: m.score, velocity: m.velocity, avgDays: m.avgDays, note: m.note };
+  return {
+    score: m.score,
+    velocity: m.velocity,
+    avgDays: m.avgDays,
+    note: m.note,
+  };
 }
 
 export function getSkillRadar(p: AppProfile) {
@@ -69,13 +75,13 @@ export function getTopCompanies(p: AppProfile) {
 export function getSalaryData(p: AppProfile) {
   const s = computeSalaryIntelligence(p);
   return {
-    percentiles:    s.percentiles,
+    percentiles: s.percentiles,
     userPercentile: s.userPercentile,
-    targetK:        s.targetK,
+    targetK: s.targetK,
     salaryTrendData: s.salaryTrendData,
-    trendKeys:      s.trendKeys,
-    deltaData:      s.deltaData,
-    medianRate:     s.medianRate,
+    trendKeys: s.trendKeys,
+    deltaData: s.deltaData,
+    medianRate: s.medianRate,
   };
 }
 
@@ -83,11 +89,11 @@ export function getSalaryData(p: AppProfile) {
 export function getNationalizationData(p: AppProfile) {
   const n = computeNationalization(p);
   return {
-    score:           n.riskScore,
-    scoreColor:      n.scoreColor,
-    riskLabel:       n.riskLabel,
+    score: n.riskScore,
+    scoreColor: n.scoreColor,
+    riskLabel: n.riskLabel,
     riskDescription: n.riskDescription,
-    countryDetails:  n.countryDetails,
+    countryDetails: n.countryDetails,
   };
 }
 
@@ -96,17 +102,7 @@ export function getCareerTwinMessages(p: AppProfile) {
   return computeCareerTwin(p).messages;
 }
 
-// ─── Dashboard Simulations ────────────────────────────────────────────────────
-export function getRecentSimulations(p: AppProfile) {
-  const hirePct = computeCareerScore(p).probability;
-  const top     = SHORT_COUNTRY[p.targetCountries[0] ?? 'United Arab Emirates'] ?? 'UAE';
-  const second  = SHORT_COUNTRY[p.targetCountries[1] ?? 'Saudi Arabia'] ?? 'KSA';
-  return [
-    { name: `${p.currentRole} → ${top} ${p.sector}`,     prob: Math.round(hirePct),      date: '2 days ago' },
-    { name: `Senior ${p.currentRole} → ${second} Tech`,  prob: Math.round(hirePct - 13), date: '1 week ago' },
-    { name: `${p.sector} Lead → Bahrain FinTech`,         prob: Math.round(hirePct - 26), date: '2 weeks ago' },
-  ];
-}
+// ─── Dashboard Simulations ─────────────────────────────────────
 
 // ─── New module accessors (for wired pages) ───────────────────────────────────
 export function getCareerMultiverseScenarios(p: AppProfile) {
