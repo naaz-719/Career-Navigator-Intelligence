@@ -8,6 +8,8 @@ import {
   CheckCircle2,
   ArrowRight,
   LayoutTemplate,
+  Copy,
+  Loader2,
 } from "lucide-react";
 import { useProfile } from "@/context/ProfileContext";
 import { computeResumeScore } from "@/engine/modules/resumeScore";
@@ -19,6 +21,21 @@ const TYPE_COLOUR: Record<string, string> = {
   credentials: "bg-green-500/10 text-green-500",
   relevance: "bg-purple-500/10 text-purple-500",
 };
+
+interface InterviewQ {
+  q: string;
+  tip: string;
+}
+interface CopilotResult {
+  score_before: number;
+  score_after: number;
+  missing_keywords: string[];
+  key_changes: string[];
+  optimized_cv: string;
+  cover_letter: string;
+  salary_estimate: string;
+  interview_questions: InterviewQ[];
+}
 
 export default function ResumeStudioPage() {
   const { profile } = useProfile();
@@ -40,8 +57,54 @@ export default function ResumeStudioPage() {
     setAppliedSuggestions((prev) => new Set([...prev, idx]));
   };
 
+  // ─── Resume Co-pilot (job-specific tailoring via n8n) ───────────────────────
+  const [showCopilot, setShowCopilot] = useState(false);
+  const [company, setCompany] = useState("");
+  const [role, setRole] = useState(profile.currentRole || "");
+  const [cv, setCv] = useState("");
+  const [jobDescription, setJobDescription] = useState("");
+  const [copilotLoading, setCopilotLoading] = useState(false);
+  const [copilotError, setCopilotError] = useState<string | null>(null);
+  const [copilotResult, setCopilotResult] = useState<CopilotResult | null>(
+    null,
+  );
+
+  const canSubmit =
+    company.trim() && role.trim() && cv.trim() && jobDescription.trim();
+
+  const handleOptimize = async () => {
+    if (!canSubmit) return;
+    setCopilotLoading(true);
+    setCopilotError(null);
+    setCopilotResult(null);
+    try {
+      const res = await fetch("/api/copilot/optimize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cv,
+          jobDescription,
+          company,
+          role,
+          email: profile.email || "",
+        }),
+      });
+      if (!res.ok) throw new Error("backend unavailable");
+      const data = await res.json();
+      setCopilotResult(data as CopilotResult);
+    } catch (e) {
+      setCopilotError(
+        "Could not reach the optimizer right now — try again in a moment.",
+      );
+    } finally {
+      setCopilotLoading(false);
+    }
+  };
+
+  const copyText = (text: string) => navigator.clipboard.writeText(text);
+
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1 shrink-0">
         <h2
           className="text-2xl font-semibold text-foreground tracking-tight"
@@ -54,7 +117,7 @@ export default function ResumeStudioPage() {
         </p>
       </div>
 
-      <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
+      <div className="h-[calc(100vh-14rem)] flex flex-col lg:flex-row gap-6 min-h-[500px]">
         {/* Left: Version Manager */}
         <div className="w-full lg:w-64 flex flex-col gap-4 shrink-0 overflow-y-auto pr-2">
           <div className="flex items-center justify-between mb-2">
@@ -130,7 +193,6 @@ export default function ResumeStudioPage() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 md:p-8 flex justify-center bg-muted/10">
-            {/* Paper */}
             <div className="bg-white text-black w-full max-w-[800px] min-h-[1056px] p-8 md:p-12 shadow-2xl rounded-sm transform origin-top scale-90 sm:scale-100">
               <header className="border-b-2 border-gray-300 pb-4 mb-6">
                 <h1 className="text-3xl font-serif font-bold text-gray-900 mb-1">
@@ -271,7 +333,10 @@ export default function ResumeStudioPage() {
           </div>
 
           <div className="mt-auto pt-4 space-y-3 border-t border-border/50">
-            <button className="w-full p-3 rounded-lg border border-border/50 bg-card hover:bg-muted/50 transition-colors flex items-center justify-between group">
+            <button
+              onClick={() => setShowCopilot((v) => !v)}
+              className="w-full p-3 rounded-lg border border-primary/40 bg-primary/10 hover:bg-primary/20 transition-colors flex items-center justify-between group"
+            >
               <div className="flex flex-col text-left">
                 <span className="font-medium text-sm text-foreground">
                   Tailor to Job Description
@@ -280,22 +345,205 @@ export default function ResumeStudioPage() {
                   Paste JD to auto-optimize
                 </span>
               </div>
-              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-            </button>
-            <button className="w-full p-3 rounded-lg border border-border/50 bg-card hover:bg-muted/50 transition-colors flex items-center justify-between group">
-              <div className="flex flex-col text-left">
-                <span className="font-medium text-sm text-foreground">
-                  Generate Cover Letter
-                </span>
-                <span className="text-xs text-muted-foreground mt-0.5">
-                  GCC-standard format
-                </span>
-              </div>
-              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+              <ArrowRight className="w-4 h-4 text-primary transition-colors" />
             </button>
           </div>
         </div>
       </div>
+
+      {/* ─── Resume Co-pilot section (job-specific tailoring) ─────────────────── */}
+      {showCopilot && (
+        <div className="bg-card border border-border/50 rounded-xl p-6 space-y-4">
+          <h3 className="font-semibold text-base flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" /> Tailor This
+            Application
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 block">
+                Company Name
+              </label>
+              <input
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                placeholder="e.g. Google"
+                className="w-full bg-background/60 border border-border/50 rounded-lg p-2.5 text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 block">
+                Role / Job Title
+              </label>
+              <input
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                placeholder="e.g. Data Analyst"
+                className="w-full bg-background/60 border border-border/50 rounded-lg p-2.5 text-sm"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 block">
+              Your Current CV
+            </label>
+            <textarea
+              value={cv}
+              onChange={(e) => setCv(e.target.value)}
+              rows={6}
+              placeholder="Paste your CV text here..."
+              className="w-full bg-background/60 border border-border/50 rounded-lg p-2.5 text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 block">
+              Job Description
+            </label>
+            <textarea
+              value={jobDescription}
+              onChange={(e) => setJobDescription(e.target.value)}
+              rows={6}
+              placeholder="Paste the job description here..."
+              className="w-full bg-background/60 border border-border/50 rounded-lg p-2.5 text-sm"
+            />
+          </div>
+
+          {copilotError && (
+            <div className="text-sm text-red-400">{copilotError}</div>
+          )}
+
+          <button
+            onClick={handleOptimize}
+            disabled={!canSubmit || copilotLoading}
+            className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 rounded-lg disabled:opacity-40 hover:bg-primary/90 transition-colors"
+          >
+            {copilotLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Sparkles className="w-4 h-4" />
+            )}
+            {copilotLoading ? "Analysing your CV..." : "Optimize Application"}
+          </button>
+
+          {copilotResult && (
+            <div className="space-y-6 pt-2">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                  <div className="text-xs uppercase tracking-wider text-red-400 font-semibold mb-1">
+                    Before Score
+                  </div>
+                  <div className="text-2xl font-bold text-red-400">
+                    {copilotResult.score_before}
+                  </div>
+                </div>
+                <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+                  <div className="text-xs uppercase tracking-wider text-green-400 font-semibold mb-1">
+                    After Score
+                  </div>
+                  <div className="text-3xl font-bold text-green-400">
+                    {copilotResult.score_after}
+                  </div>
+                </div>
+                <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                  <div className="text-xs uppercase tracking-wider text-blue-400 font-semibold mb-1">
+                    Boost
+                  </div>
+                  <div className="text-2xl font-bold text-blue-400">
+                    +{copilotResult.score_after - copilotResult.score_before}%
+                  </div>
+                </div>
+                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                  <div className="text-xs uppercase tracking-wider text-amber-400 font-semibold mb-1">
+                    Est. Salary
+                  </div>
+                  <div className="text-base font-bold text-amber-400">
+                    {copilotResult.salary_estimate}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-sm mb-2">
+                  Keywords Addressed
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {copilotResult.missing_keywords.map((k, i) => (
+                    <span
+                      key={i}
+                      className="px-2.5 py-1 rounded-full bg-muted/50 border border-border/50 text-xs"
+                    >
+                      {k}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-sm mb-2">Key Changes Made</h4>
+                <ul className="space-y-1.5">
+                  {copilotResult.key_changes.map((c, i) => (
+                    <li
+                      key={i}
+                      className="text-sm text-muted-foreground flex gap-2"
+                    >
+                      <span className="text-green-500">✓</span> {c}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="font-semibold text-sm">Optimized CV</h4>
+                  <button
+                    onClick={() => copyText(copilotResult.optimized_cv)}
+                    className="text-xs flex items-center gap-1 text-primary hover:underline"
+                  >
+                    <Copy className="w-3 h-3" /> Copy
+                  </button>
+                </div>
+                <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-sans bg-muted/20 p-3 rounded-lg border border-border/50">
+                  {copilotResult.optimized_cv}
+                </pre>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="font-semibold text-sm">Cover Letter</h4>
+                  <button
+                    onClick={() => copyText(copilotResult.cover_letter)}
+                    className="text-xs flex items-center gap-1 text-primary hover:underline"
+                  >
+                    <Copy className="w-3 h-3" /> Copy
+                  </button>
+                </div>
+                <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-sans bg-muted/20 p-3 rounded-lg border border-border/50">
+                  {copilotResult.cover_letter}
+                </pre>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-sm mb-2">
+                  Interview Questions
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {copilotResult.interview_questions.map((q, i) => (
+                    <div
+                      key={i}
+                      className="p-3 rounded-lg bg-muted/20 border border-border/50"
+                    >
+                      <p className="text-sm font-medium mb-1">{q.q}</p>
+                      <p className="text-xs text-muted-foreground">{q.tip}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
