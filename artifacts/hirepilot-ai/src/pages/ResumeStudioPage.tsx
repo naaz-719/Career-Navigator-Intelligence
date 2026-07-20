@@ -216,20 +216,58 @@ export default function ResumeStudioPage() {
     setCopilotError(null);
     setCopilotResult(null);
     try {
-      const res = await fetch("/api/copilot/optimize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cv: uploadedCvText || buildCvText(),
-          jobDescription,
-          company,
-          role,
-          email: profile.email || "",
-        }),
-      });
-      if (!res.ok) throw new Error("backend unavailable");
-      const data = await res.json();
-      setCopilotResult(data as CopilotResult);
+      const payload = {
+        cv: uploadedCvText || buildCvText(),
+        jobDescription,
+        company,
+        role,
+        email: profile.email || "",
+      };
+
+      // Call the n8n webhook directly
+      const res = await fetch(
+        "https://naazmulla.app.n8n.cloud/webhook/cv-copilot",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!res.ok) throw new Error(`webhook returned ${res.status}`);
+
+      const raw = await res.json();
+
+      // n8n may return an array (one item per node output) — unwrap it
+      const data: Record<string, unknown> = Array.isArray(raw) ? raw[0] : raw;
+
+      // Normalise the response into the CopilotResult shape.
+      // Accept both snake_case and camelCase keys n8n might produce.
+      const result: CopilotResult = {
+        score_before:
+          Number(data.score_before ?? data.scoreBefore ?? 0) || 0,
+        score_after:
+          Number(data.score_after ?? data.scoreAfter ?? 0) || 0,
+        missing_keywords: Array.isArray(data.missing_keywords ?? data.missingKeywords)
+          ? (data.missing_keywords ?? data.missingKeywords) as string[]
+          : [],
+        key_changes: Array.isArray(data.key_changes ?? data.keyChanges)
+          ? (data.key_changes ?? data.keyChanges) as string[]
+          : [],
+        optimized_cv:
+          String(data.optimized_cv ?? data.optimizedCv ?? data.optimized ?? ""),
+        cover_letter:
+          String(data.cover_letter ?? data.coverLetter ?? ""),
+        salary_estimate:
+          String(data.salary_estimate ?? data.salaryEstimate ?? ""),
+        interview_questions: Array.isArray(
+          data.interview_questions ?? data.interviewQuestions
+        )
+          ? ((data.interview_questions ?? data.interviewQuestions) as InterviewQ[])
+          : [],
+      };
+
+      setCopilotResult(result);
     } catch (e) {
       setCopilotError(
         "Could not reach the optimizer right now — try again in a moment.",
