@@ -67,7 +67,11 @@ export default function CareerIntelligencePage() {
         },
       );
 
-      const data = await response.json();
+      console.log(response.status);
+
+      const text = await response.text();
+
+      console.log(text);
 
       setDemand(data.demand);
       setRadar(data.radar);
