@@ -74,6 +74,7 @@ const CAREER_GOALS = [
 export default function SettingsPage() {
   const { profile, updateProfile } = useProfile();
   const [activeTab, setActiveTab] = useState("profile");
+  const [skillInput, setSkillInput] = useState("");
   const [saved, setSaved] = useState(false);
 
   // Local form state — mirrors profile, persisted on Save
@@ -81,6 +82,7 @@ export default function SettingsPage() {
     name: profile.name,
     email: profile.email,
     projects: profile.projects || [],
+    skills: profile.skills || [],
     nationality: profile.nationality,
     currentCountry: profile.currentCountry,
     currentRole: profile.currentRole,
@@ -272,6 +274,65 @@ export default function SettingsPage() {
                 </div>
                 <div className="pt-4 border-t border-border/50">
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
+                    Skills
+                  </label>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {form.skills.map((skill, idx) => (
+                      <span
+                        key={idx}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/30 text-sm text-primary"
+                      >
+                        {skill}
+                        <button
+                          onClick={() =>
+                            setForm((f) => ({
+                              ...f,
+                              skills: f.skills.filter((_, i) => i !== idx),
+                            }))
+                          }
+                          className="hover:text-red-400"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={skillInput}
+                      onChange={(e) => setSkillInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && skillInput.trim()) {
+                          e.preventDefault();
+                          setForm((f) => ({
+                            ...f,
+                            skills: [...f.skills, skillInput.trim()],
+                          }));
+                          setSkillInput("");
+                        }
+                      }}
+                      placeholder="Type a skill and press Enter (e.g. SQL, Power BI)"
+                      className="flex-1 bg-background/60 border border-border/50 rounded-lg p-2.5 text-sm"
+                    />
+                    <button
+                      onClick={() => {
+                        if (skillInput.trim()) {
+                          setForm((f) => ({
+                            ...f,
+                            skills: [...f.skills, skillInput.trim()],
+                          }));
+                          setSkillInput("");
+                        }
+                      }}
+                      className="px-4 py-2 bg-primary/10 text-primary rounded-lg text-sm font-medium hover:bg-primary/20"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+                <div className="pt-4 border-t border-border/50">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
                     Work Experience / Projects
                   </label>
                   {form.projects.map((proj, idx) => (
@@ -400,6 +461,66 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
+
+          <div className="pt-4 border-t border-border/50">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
+              Skills
+            </label>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {form.skills.map((skill, idx) => (
+                <span
+                  key={idx}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/30 text-sm text-primary"
+                >
+                  {skill}
+                  <button
+                    onClick={() =>
+                      setForm((f) => ({
+                        ...f,
+                        skills: f.skills.filter((_, i) => i !== idx),
+                      }))
+                    }
+                    className="hover:text-red-400"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={skillInput}
+                onChange={(e) => setSkillInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && skillInput.trim()) {
+                    e.preventDefault();
+                    setForm((f) => ({
+                      ...f,
+                      skills: [...f.skills, skillInput.trim()],
+                    }));
+                    setSkillInput("");
+                  }
+                }}
+                placeholder="Type a skill and press Enter (e.g. SQL, Power BI)"
+                className="flex-1 bg-background/60 border border-border/50 rounded-lg p-2.5 text-sm"
+              />
+              <button
+                onClick={() => {
+                  if (skillInput.trim()) {
+                    setForm((f) => ({
+                      ...f,
+                      skills: [...f.skills, skillInput.trim()],
+                    }));
+                    setSkillInput("");
+                  }
+                }}
+                className="px-4 py-2 bg-primary/10 text-primary rounded-lg text-sm font-medium hover:bg-primary/20"
+              >
+                Add
+              </button>
+            </div>
+          </div>
 
           {/* ── Goals Tab ────────────────────────────────────────── */}
           {activeTab === "goals" && (
