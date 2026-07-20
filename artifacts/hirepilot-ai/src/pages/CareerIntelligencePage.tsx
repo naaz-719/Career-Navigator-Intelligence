@@ -36,6 +36,7 @@ interface Job {
   seniorityGuess: string;
   link: string;
   sources: string[];
+  skills: string[];
 }
 
 const COLORS = [
@@ -111,6 +112,41 @@ function sourceStats(jobs: Job[]) {
   return [...map.entries()].map(([name, value]) => ({ name, value }));
 }
 
+function topSkills(jobs: Job[]) {
+  const map = new Map<string, number>();
+
+  jobs.forEach((job) => {
+    (job.skills || []).forEach((skill) => {
+      map.set(skill, (map.get(skill) || 0) + 1);
+    });
+  });
+
+  return [...map.entries()]
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
+}
+
+function skillsByFunction(jobs: Job[]) {
+  const map = new Map<string, Map<string, number>>();
+
+  jobs.forEach((job) => {
+    const fn = job.functionGuess;
+    if (!map.has(fn)) map.set(fn, new Map());
+    const skillMap = map.get(fn)!;
+    (job.skills || []).forEach((skill) => {
+      skillMap.set(skill, (skillMap.get(skill) || 0) + 1);
+    });
+  });
+
+  return [...map.entries()].map(([fn, skillMap]) => ({
+    function: fn,
+    skills: [...skillMap.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([skill]) => skill),
+  }));
+}
+
 function recentJobs(jobs: Job[]) {
   return [...jobs]
     .sort(
@@ -143,24 +179,29 @@ export default function CareerIntelligencePage() {
     loadJobs();
   }, []);
 
-  const filteredJobs = useMemo(() => {
-    return jobs.filter((job) => {
-      const role = profile.currentRole.toLowerCase();
-      return (
+  // Jobs matching user's current role (for personalised KPI + latest table)
+  const matchingJobs = useMemo(() => {
+    const role = profile.currentRole.toLowerCase().trim();
+    if (!role) return jobs;
+    return jobs.filter(
+      (job) =>
         job.searchKeyword.toLowerCase().includes(role) ||
-        job.title.toLowerCase().includes(role)
-      );
-    });
+        job.title.toLowerCase().includes(role) ||
+        job.functionGuess.toLowerCase().includes(role)
+    );
   }, [jobs, profile.currentRole]);
 
-  const totalJobs = filteredJobs.length;
-  const countries = countryStats(filteredJobs);
-  const companies = topCompanies(filteredJobs);
-  const functions = functionStats(filteredJobs);
-  const seniority = seniorityStats(filteredJobs);
-  const sources = sourceStats(filteredJobs);
-  const hiringTrend = createHiringTrend(filteredJobs);
-  const latestJobs = recentJobs(filteredJobs);
+  // Full dataset drives all market charts so they're always rich
+  const totalJobs = matchingJobs.length;
+  const countries = countryStats(jobs);
+  const companies = topCompanies(jobs);
+  const functions = functionStats(jobs);
+  const seniority = seniorityStats(jobs);
+  const sources = sourceStats(jobs);
+  const hiringTrend = createHiringTrend(jobs);
+  const latestJobs = recentJobs(matchingJobs.length > 0 ? matchingJobs : jobs);
+  const skills = topSkills(matchingJobs.length > 0 ? matchingJobs : jobs);
+  const skillFunctions = skillsByFunction(jobs);
 
   if (loading) {
     return (
@@ -487,51 +528,115 @@ export default function CareerIntelligencePage() {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
+          {/* Top skills bar chart */}
+          <div className="bg-card border rounded-xl p-5">
+            <h3 className="font-semibold mb-1">Most In-Demand Skills</h3>
+            <p className="text-xs text-muted-foreground mb-5">
+              Aggregated from {filteredJobs.length} job postings matching your profile — ranked by employer demand
+            </p>
+            <div className="h-[340px]">
+              <ResponsiveContainer>
+                <BarChart
+                  data={skills.slice(0, 15)}
+                  layout="vertical"
+                  margin={{ left: 10, right: 30 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" allowDecimals={false} />
+                  <YAxis dataKey="name" type="category" width={160} tick={{ fontSize: 12 }} />
+                  <Tooltip formatter={(v) => [`${v} job postings`, "Demand"]} />
+                  <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+                    {skills.slice(0, 15).map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Skills demand progress list */}
           <div className="grid lg:grid-cols-2 gap-6">
             <div className="bg-card border rounded-xl p-5">
-              <h3 className="font-semibold mb-5">Top Roles Hiring Right Now</h3>
-              <div className="space-y-4">
-                {functions.slice(0, 8).map((role, index) => (
-                  <div
-                    key={role.name}
-                    className="flex justify-between items-center p-3 rounded-lg hover:bg-muted/30"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center font-semibold text-primary">
-                        {index + 1}
+              <h3 className="font-semibold mb-5">Skill Demand Breakdown</h3>
+              <div className="space-y-3">
+                {skills.slice(0, 12).map((skill) => {
+                  const pct = skills[0]?.value
+                    ? Math.round((skill.value / skills[0].value) * 100)
+                    : 0;
+                  return (
+                    <div key={skill.name}>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="font-medium">{skill.name}</span>
+                        <span className="text-muted-foreground">
+                          {skill.value} postings
+                        </span>
                       </div>
-                      <div>
-                        <div className="font-medium">{role.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          Job Function
-                        </div>
+                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full bg-primary rounded-full transition-all"
+                          style={{ width: `${pct}%` }}
+                        />
                       </div>
                     </div>
-                    <span className="font-semibold">{role.value}</span>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Skills by function */}
+            <div className="bg-card border rounded-xl p-5">
+              <h3 className="font-semibold mb-5">Skills by Job Function</h3>
+              <div className="space-y-4 overflow-auto max-h-[420px] pr-1">
+                {skillFunctions.slice(0, 8).map((fn) => (
+                  <div key={fn.function} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium text-sm">{fn.function}</h4>
+                      <Activity className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {fn.skills.map((skill) => (
+                        <span
+                          key={skill}
+                          className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary font-medium"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
+          </div>
 
-            <div className="bg-card border rounded-xl p-5">
-              <h3 className="font-semibold mb-5">Recommended Focus Areas</h3>
-              <div className="space-y-4">
-                {functions.slice(0, 6).map((role) => (
-                  <div key={role.name} className="border rounded-lg p-4">
-                    <div className="flex justify-between">
-                      <div>
-                        <h4 className="font-medium">{role.name}</h4>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {role.value} live openings
-                        </p>
-                      </div>
-                      <span className="text-green-500 text-sm font-medium">
-                        High Demand
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+          {/* Full skill cloud */}
+          <div className="bg-card border rounded-xl p-5">
+            <h3 className="font-semibold mb-4">All Skills in Demand</h3>
+            <div className="flex flex-wrap gap-2">
+              {skills.map((skill, i) => {
+                const size =
+                  i < 5
+                    ? "text-base font-bold"
+                    : i < 12
+                    ? "text-sm font-semibold"
+                    : "text-xs font-medium";
+                const opacity =
+                  i < 5
+                    ? "bg-primary/20 text-primary border-primary/30"
+                    : i < 20
+                    ? "bg-muted text-foreground"
+                    : "bg-muted/50 text-muted-foreground";
+                return (
+                  <span
+                    key={skill.name}
+                    className={`px-3 py-1 rounded-full border ${size} ${opacity}`}
+                    title={`${skill.value} job postings require this skill`}
+                  >
+                    {skill.name}
+                  </span>
+                );
+              })}
             </div>
           </div>
         </motion.div>
